@@ -14,7 +14,7 @@ By default, `ctf` traverses the current directory (`.`) and creates a timestampe
 
 ## Options
 
-*   `--content [ext1 ext2 ...]`: Includes the content of files with the specified extensions (e.g., `.c`, `.h`, `.py`). If no extensions are provided, it includes content only for files explicitly defined in its internal exception list (like `Dockerfile`). Files without extensions are generally excluded unless they are in the exception list.
+*   `--content [ext1 ext2 ...]`: Includes the content of files with the specified extensions (e.g., `c`, `h`, `py`). If no extensions are provided, it includes content only for files explicitly defined in its internal exception list (like `Dockerfile`). Files without extensions are generally excluded unless they are in the exception list.
 *   `--addf <dir1> [dir2 ...]`: Specifies directories or files to include in the traversal. Default is the current directory (`.`).
 *   `--rmf <dir1> [dir2 ...]`: Specifies directories or files to exclude from the traversal.
 *   `--git`: Automatically excludes files and directories listed in the `.gitignore` file found in the current directory. These exclusions are added to any specified via `--rmf`.
@@ -32,12 +32,12 @@ By default, `ctf` traverses the current directory (`.`) and creates a timestampe
 
 2.  **Include content of C/H files and specific directories, excluding build files:**
     ```bash
-    ./ctf --content .c .h --addf src include tests --rmf build
+    ./ctf --content c h --addf src include tests --rmf build
     ```
 
 3.  **Use .gitignore, include Python content, save to a specific file:**
     ```bash
-    ./ctf --git --content .py --name my_project_context --dir ./output
+    ./ctf --git --content py --name my_project_context --dir ./output
     ```
 
 4.  **Include Dockerfile content (even without specifying `--content`):**
