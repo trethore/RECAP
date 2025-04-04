@@ -1,5 +1,5 @@
+// its what you expect from a utils file
 #include "ctf.h"
-
 
 int is_compiled_file(const char *filename) {
     const char *ext = strrchr(filename, '.');

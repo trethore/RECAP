@@ -1,5 +1,5 @@
+// parse args
 #include "ctf.h"
-
 
 void clear_ctf_output_files(void) {
 

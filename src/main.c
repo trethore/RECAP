@@ -18,7 +18,10 @@ FILE *output = NULL;
 char output_dir[MAX_PATH_SIZE] = ".";
 char output_name[MAX_PATH_SIZE] = "";
 
+// conpiled file extensions add more to your liking
 const char *compiled_exts[] = {"exe", "bin", "o", "obj", "class", NULL};
+
+// file name exceptions add more to your liking
 const char *content_exceptions[] = {"Dockerfile", NULL};
 
 int main(int argc, char *argv[]) {

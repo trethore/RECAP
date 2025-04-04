@@ -1,5 +1,6 @@
-#include "ctf.h"
+// this file add some useful functions for traversing directories and files
 
+#include "ctf.h"
 
 void print_indent(int depth) {
     for (int i = 0; i < depth; i++) {
