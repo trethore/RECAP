@@ -68,11 +68,11 @@ char *get_output_filename(void) {
 
     if (strlen(output_name) > 0) {
 
-        required_len = snprintf(NULL, 0, "%s/%s.txt", output_dir, output_name);
+        required_len = snprintf(NULL, 0, "%s/%s", output_dir, output_name);
         if (required_len >= 0 && required_len < MAX_PATH_SIZE) {
-            snprintf(filename, MAX_PATH_SIZE, "%s/%s.txt", output_dir, output_name);
+            snprintf(filename, MAX_PATH_SIZE, "%s/%s", output_dir, output_name);
         } else {
-            fprintf(stderr, "Error: Constructed output path is too long: %s/%s.txt\n", output_dir, output_name);
+            fprintf(stderr, "Error: Constructed output path is too long: %s/%s\n", output_dir, output_name);
             free(filename);
             return NULL;
         }

@@ -77,7 +77,7 @@ void parse_arguments(int argc, char *argv[]) {
                 i++;
             }
             i--;
-        } else if (strcmp(argv[i], "--addf") == 0 || strcmp(argv[i], "-addf") == 0) {
+        } else if (strcmp(argv[i], "--addf") == 0) {
             i++;
             while (i < argc && argv[i][0] != '-') {
                 if (addf_count < MAX_ADDF)
@@ -89,7 +89,7 @@ void parse_arguments(int argc, char *argv[]) {
                 i++;
             }
             i--;
-        } else if (strcmp(argv[i], "--rmf") == 0 || strcmp(argv[i], "-rmf") == 0) {
+        } else if (strcmp(argv[i], "--rmf") == 0) {
             i++;
             while (i < argc && argv[i][0] != '-') {
                 if (rmf_count < MAX_RMF) {
