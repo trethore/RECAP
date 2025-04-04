@@ -5,6 +5,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <ctype.h> // Include for isspace
 
 #define MAX_PATH_SIZE 1024
 #define MAX_CONTENT_TYPES 1024
@@ -19,14 +20,17 @@ static int addf_count = 0;
 
 static char *rmf_dirs[MAX_RMF];
 static int rmf_count = 0;
+static char gitignore_entries[MAX_RMF][MAX_PATH_SIZE]; // Storage for gitignore lines
 
 static int content_flag = 0;
+static int git_flag = 0; // Flag for --git option
 static FILE *output = NULL;
 
 static char output_dir[MAX_PATH_SIZE] = ".";
 static char output_name[MAX_PATH_SIZE] = "";
 
 const char *compiled_exts[] = {"exe", "bin", "o", "obj", "class", NULL};
+const char *content_exceptions[] = {"Dockerfile", NULL}; // Files to always show content for
 
 int is_compiled_file(const char *filename) {
     const char *ext = strrchr(filename, '.');
@@ -53,16 +57,26 @@ void normalize_path(char *path) {
 
 int should_show_content(const char *filename) {
     if (!content_flag) return 0; // --content not set at all
-    if (content_type_count == 0) return is_text_file(filename); // show all text files
+
+    // Check exceptions first
+    const char *base_filename = strrchr(filename, '/');
+    base_filename = base_filename ? base_filename + 1 : filename; // Get basename
+    for (int i = 0; content_exceptions[i] != NULL; i++) {
+        if (strcmp(base_filename, content_exceptions[i]) == 0)
+            return 1; // Always show if in exception list
+    }
+
+    // If --content was given but no specific types, only show exceptions (handled above)
+    if (content_type_count == 0) return 0; // Don't show content by default if no types specified
 
     const char *ext = strrchr(filename, '.');
-    if (!ext) return 0;
+    if (!ext) return 0; // Don't show content for files without extensions (unless exception)
     ext++;
     for (int i = 0; i < content_type_count; i++) {
         if (strcmp(ext, content_types[i]) == 0)
-            return 1;
+            return 1; // Show if extension matches specified types
     }
-    return 0;
+    return 0; // Don't show otherwise
 }
 
 void print_indent(int depth) {
@@ -184,6 +198,44 @@ void clear_ctf_output_files(void) {
     closedir(dir);
 }
 
+void load_gitignore(void) {
+    FILE *git_ignore_file = fopen(".gitignore", "r");
+    if (!git_ignore_file) {
+        // No .gitignore file found, or cannot open it. Silently ignore.
+        return;
+    }
+
+    char line[MAX_PATH_SIZE];
+    while (fgets(line, sizeof(line), git_ignore_file)) {
+        // Remove trailing newline/whitespace
+        line[strcspn(line, "\r\n")] = 0;
+
+        // Trim leading whitespace (optional, basic version)
+        char *trimmed_line = line;
+        while (isspace((unsigned char)*trimmed_line)) trimmed_line++;
+
+        // Skip empty lines and comments
+        if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
+            continue;
+        }
+
+        // Basic handling: add the line as a path to ignore
+        // More complex glob/pattern matching is not implemented here.
+        if (rmf_count < MAX_RMF) {
+            // Ensure path separators are consistent if needed (basic version doesn't)
+            // normalize_path(trimmed_line); // Optional: normalize slashes if matching requires it
+            strncpy(gitignore_entries[rmf_count], trimmed_line, MAX_PATH_SIZE - 1);
+            gitignore_entries[rmf_count][MAX_PATH_SIZE - 1] = '\0';
+            rmf_dirs[rmf_count] = gitignore_entries[rmf_count]; // Point to the stored string
+            rmf_count++;
+        } else {
+            fprintf(stderr, "Warning: Maximum number of ignored paths (%d) reached from .gitignore.\n", MAX_RMF);
+            break;
+        }
+    }
+    fclose(git_ignore_file);
+}
+
 void parse_arguments(int argc, char *argv[]) {
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--clear") == 0) {
@@ -219,7 +271,7 @@ void parse_arguments(int argc, char *argv[]) {
             i++;
             while (i < argc && argv[i][0] != '-') {
                 if (rmf_count < MAX_RMF)
-                    rmf_dirs[rmf_count++] = argv[i];
+                    rmf_dirs[rmf_count++] = argv[i]; // Note: gitignore entries will overwrite these if --git is used later
                 else {
                     fprintf(stderr, "Too many rmf directories specified. Max allowed is %d\n", MAX_RMF);
                     exit(1);
@@ -227,6 +279,8 @@ void parse_arguments(int argc, char *argv[]) {
                 i++;
             }
             i--;
+        } else if (strcmp(argv[i], "--git") == 0) {
+             git_flag = 1;
         } else if (strcmp(argv[i], "--dir") == 0 && i + 1 < argc) {
             strncpy(output_dir, argv[++i], MAX_PATH_SIZE - 1);
             normalize_path(output_dir); 
@@ -240,6 +294,11 @@ void parse_arguments(int argc, char *argv[]) {
 
 int main(int argc, char *argv[]) {
     parse_arguments(argc, argv);
+
+    // Load .gitignore entries if requested
+    if (git_flag) {
+        load_gitignore();
+    }
 
     char *filename = get_output_filename();
     if (!filename) {
