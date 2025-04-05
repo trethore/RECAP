@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -std=c11 -g
-LIBS = -lcurl
+LIBS = -lcurl -ljansson
 
 SRCDIR = src
 OBJDIR = obj

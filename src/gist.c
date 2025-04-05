@@ -1,7 +1,7 @@
-// src/pastebin.c
 #include "ctf.h"
 #include <curl/curl.h>
 #include <sys/stat.h>
+#include <jansson.h> // JSON library for proper escaping
 
 struct MemoryStruct {
     char *memory;
@@ -57,11 +57,19 @@ char *upload_to_gist(const char *filepath, const char *github_token) {
     const char *filename_only = strrchr(filepath, '/');
     filename_only = filename_only ? filename_only + 1 : filepath;
 
-    const char *json_format =
-        "{ \"description\": \"CTF Output\", \"public\": false, \"files\": { \"%s\": { \"content\": \"%s\" } } }";
-    int json_len = snprintf(NULL, 0, json_format, filename_only, file_content);
-    char *json_payload = malloc(json_len + 1);
-    snprintf(json_payload, json_len + 1, json_format, filename_only, file_content);
+    // Use JSON library to escape file content
+    json_t *root = json_object();
+    json_t *files = json_object();
+    json_t *file_obj = json_object();
+
+    json_object_set_new(file_obj, "content", json_string(file_content));
+    json_object_set_new(files, filename_only, file_obj);
+    json_object_set_new(root, "description", json_string("CTF Output"));
+    json_object_set_new(root, "public", json_false());
+    json_object_set_new(root, "files", files);
+
+    char *json_payload = json_dumps(root, JSON_COMPACT);
+    json_decref(root);
     free(file_content);
 
     curl = curl_easy_init();
