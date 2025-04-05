@@ -20,6 +20,7 @@ By default, `ctf` traverses the current directory (`.`) and creates a timestampe
 *   `--git`: Automatically excludes files and directories listed in the `.gitignore` file found in the current directory. These exclusions are added to any specified via `--rmf`.
 *   `--dir <output_directory>`: Specifies the directory where the output file should be saved. Default is the current directory (`.`).
 *   `--name <output_filename>`: Specifies a custom name for the output file (without the `.txt` extension). If not provided, a timestamped name is generated.
+*   `--paste <api_key>`: Uploads the output to Pastebin using the provided developer API key instead of saving it locally. Prints the Pastebin URL to the console.
 *   `--clear`: Deletes all files in the current directory starting with `ctf-output`. Use with caution.
 
 ## Examples
@@ -46,7 +47,13 @@ By default, `ctf` traverses the current directory (`.`) and creates a timestampe
     ```
     (If `--content` *is* used with specific extensions, Dockerfile content will still be included due to the exception list).
 
-5.  **Clean up previous outputs:**
+5.  **Upload output to Pastebin:**
+    ```bash
+    ./ctf --content c h --paste YOUR_PASTEBIN_API_KEY
+    ```
+    (Outputs the structure and C/H file content, uploads it to Pastebin, and prints the link.)
+
+6.  **Clean up previous outputs:**
     ```bash
     ./ctf --clear
     ```

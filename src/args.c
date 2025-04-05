@@ -1,5 +1,8 @@
 // parse args
 #include "ctf.h"
+#include <curl/curl.h> // Include curl header
+
+char *pastebin_api_key = NULL; // Define and initialize pastebin_api_key
 
 void clear_ctf_output_files(void) {
 
@@ -113,6 +116,8 @@ void parse_arguments(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "--name") == 0 && i + 1 < argc) {
             strncpy(output_name, argv[++i], MAX_PATH_SIZE - 1);
              output_name[MAX_PATH_SIZE - 1] = '\0';
+        } else if (strcmp(argv[i], "--paste") == 0 && i + 1 < argc) { // Added --paste option
+            pastebin_api_key = argv[++i];
         } else {
              fprintf(stderr, "Unknown option or missing argument: %s\n", argv[i]);
 

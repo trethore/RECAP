@@ -1,5 +1,5 @@
 #include "ctf.h"
-
+#include <curl/curl.h> // Include curl header
 
 char *content_types[MAX_CONTENT_TYPES];
 int content_type_count = 0;
@@ -25,8 +25,8 @@ const char *compiled_exts[] = {"exe", "bin", "o", "obj", "class", NULL};
 const char *content_exceptions[] = {"Dockerfile", NULL};
 
 int main(int argc, char *argv[]) {
+    curl_global_init(CURL_GLOBAL_ALL); // Initialize libcurl
     parse_arguments(argc, argv);
-
 
     if (git_flag) {
         load_gitignore();
@@ -48,8 +48,6 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < addf_count; i++) {
         int skip = 0;
         for (int j = 0; j < rmf_count; j++) {
-
-
             if (strcmp(addf_dirs[i], rmf_dirs[j]) == 0) {
                 skip = 1;
                 break;
@@ -64,14 +62,26 @@ int main(int argc, char *argv[]) {
     }
 
     fclose(output);
-    if (traversed)
-        printf("Output written to %s\n", filename);
-    else {
-        printf("No directories traversed or all were excluded.\n");
 
-        remove(filename);
+    if (traversed) {
+        if (pastebin_api_key) {
+            char *paste_url = upload_to_pastebin(filename, pastebin_api_key);
+            if (paste_url) {
+                printf("Output uploaded to: %s\n", paste_url);
+                free(paste_url);
+                remove(filename); // Remove the local file after successful upload
+            } else {
+                fprintf(stderr, "Failed to upload to Pastebin. Output saved locally to %s\n", filename);
+            }
+        } else {
+            printf("Output written to %s\n", filename);
+        }
+    } else {
+        printf("No directories traversed or all were excluded.\n");
+        remove(filename); // Remove the empty file
     }
 
     free(filename);
+    curl_global_cleanup(); // Cleanup libcurl
     return 0;
 }

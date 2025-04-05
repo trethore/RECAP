@@ -104,11 +104,11 @@ void traverse_directory(const char *base_path, int depth) {
             const char *output_basename = strrchr(output_filename_ptr, '/');
             output_basename = output_basename ? output_basename + 1 : output_filename_ptr;
 
-
+            // Check required length first to prevent truncation
             int required_len = snprintf(NULL, 0, "%s/%s", output_dir, output_basename);
 
             if (required_len >= 0 && required_len < MAX_PATH_SIZE) {
-
+                // Safe to write: required length is checked above.
                 snprintf(normalized_output_path, MAX_PATH_SIZE, "%s/%s", output_dir, output_basename);
                 normalize_path(normalized_output_path);
                 if (strcmp(full_path, normalized_output_path) == 0) {
