@@ -1,29 +1,13 @@
 // its what you expect from a utils file
 #include "ctf.h"
+#include <ctype.h> // Include for tolower
 
-int is_compiled_file(const char *filename) {
-    const char *ext = strrchr(filename, '.');
-    if (!ext) {
-
-        for (int i = 0; content_exceptions[i] != NULL; i++) {
-            if (strcmp(filename, content_exceptions[i]) == 0) {
-                return 0;
-            }
-        }
-        return 1;
-    }
-    ext++;
-    for (int i = 0; compiled_exts[i] != NULL; i++) {
-        if (strcmp(ext, compiled_exts[i]) == 0)
-            return 1;
-    }
-    return 0;
+// pls if u see this reach out to me on discord i dont know what im doing
+int is_text_file(const char *filename)  {
+  
 }
 
-int is_text_file(const char *filename) {
 
-    return !is_compiled_file(filename);
-}
 
 void normalize_path(char *path) {
     for (int i = 0; path[i]; i++) {
@@ -46,7 +30,7 @@ int should_show_content(const char *filename) {
 
 
     if (content_type_count == 0) {
-        return !is_compiled_file(filename);
+        return is_text_file(filename);
     }
 
 
