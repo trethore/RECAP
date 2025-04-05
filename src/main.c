@@ -63,13 +63,13 @@ int main(int argc, char *argv[]) {
 
     if (traversed) {
         if (pastebin_api_key) {
-            char *paste_url = upload_to_pastebin(filename, pastebin_api_key);
+            char *paste_url = upload_to_gist(filename, pastebin_api_key);
             if (paste_url) {
                 printf("Output uploaded to: %s\n", paste_url);
                 free(paste_url);
                 remove(filename); 
             } else {
-                fprintf(stderr, "Failed to upload to Pastebin. Output saved locally to %s\n", filename);
+                fprintf(stderr, "Failed to upload to Gist. Output saved locally to %s\n", filename);
             }
         } else {
             printf("Output written to %s\n", filename);

@@ -52,6 +52,6 @@ int is_text_file(const char *filename);
 void normalize_path(char *path);
 int should_show_content(const char *filename);
 char *get_output_filename(void);
-char *upload_to_pastebin(const char *filepath, const char *api_key);
+char *upload_to_gist(const char *filepath, const char *api_key);
 
 #endif
