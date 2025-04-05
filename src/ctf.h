@@ -31,7 +31,7 @@ extern FILE *output;
 
 extern char output_dir[MAX_PATH_SIZE];
 extern char output_name[MAX_PATH_SIZE];
-extern char *pastebin_api_key; // Added for Pastebin API key
+extern char *pastebin_api_key; 
 
 extern const char *compiled_exts[];
 extern const char *content_exceptions[];
@@ -52,6 +52,6 @@ int is_text_file(const char *filename);
 void normalize_path(char *path);
 int should_show_content(const char *filename);
 char *get_output_filename(void);
-char *upload_to_pastebin(const char *filepath, const char *api_key); // Added for Pastebin upload
+char *upload_to_pastebin(const char *filepath, const char *api_key);
 
 #endif

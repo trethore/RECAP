@@ -67,10 +67,8 @@ char *get_output_filename(void) {
     int required_len = -1;
 
     if (strlen(output_name) > 0) {
-        // Check required length first to prevent truncation
         required_len = snprintf(NULL, 0, "%s/%s", output_dir, output_name);
         if (required_len >= 0 && required_len < MAX_PATH_SIZE) {
-            // Safe to write: required length is checked above.
             snprintf(filename, MAX_PATH_SIZE, "%s/%s", output_dir, output_name);
         } else {
             fprintf(stderr, "Error: Constructed output path is too long: %s/%s\n", output_dir, output_name);
@@ -83,10 +81,8 @@ char *get_output_filename(void) {
         char timestamp[64];
         strftime(timestamp, sizeof(timestamp), "ctf-output-%Y%m%d-%H%M%S.txt", t);
 
-        // Check required length first to prevent truncation
         required_len = snprintf(NULL, 0, "%s/%s", output_dir, timestamp);
         if (required_len >= 0 && required_len < MAX_PATH_SIZE) {
-            // Safe to write: required length is checked above.
             snprintf(filename, MAX_PATH_SIZE, "%s/%s", output_dir, timestamp);
         } else {
             fprintf(stderr, "Error: Constructed output path is too long: %s/%s\n", output_dir, timestamp);
