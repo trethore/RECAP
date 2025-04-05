@@ -139,7 +139,8 @@ void traverse_directory(const char *base_path, int depth) {
             if (strcmp(entry->d_name, "ctf") == 0 || strcmp(entry->d_name, "ctf.exe") == 0) continue;
 
             print_indent(depth);
-            if (should_show_content(entry->d_name)) {
+            // Pass full_path to should_show_content
+            if (should_show_content(entry->d_name, full_path)) {
                 fprintf(output, "%s:\n", entry->d_name);
                 write_file_content_inline(full_path, depth + 1);
             } else {

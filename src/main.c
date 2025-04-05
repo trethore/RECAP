@@ -20,7 +20,6 @@ char output_name[MAX_PATH_SIZE] = "";
 
 const char *compiled_exts[] = {"exe", "bin", "o", "obj", "class", NULL};
 
-const char *content_exceptions[] = {"Dockerfile", NULL};
 
 int main(int argc, char *argv[]) {
     curl_global_init(CURL_GLOBAL_ALL); 

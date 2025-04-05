@@ -3,8 +3,27 @@
 #include <ctype.h> // Include for tolower
 
 // pls if u see this reach out to me on discord i dont know what im doing
-int is_text_file(const char *filename)  {
-  
+int is_text_file(const char *full_path)  {
+    FILE *file = fopen(full_path, "rb");
+    if (!file) {
+        perror("Failed to open file");
+        return 0; 
+    }
+
+    int c;
+    int is_text = 1;
+    int count = 0;
+
+    while ((c = fgetc(file)) != EOF && count < 1024) {
+        if ((c < 32 || c > 126) && c != '\n' && c != '\r' && c != '\t') {
+            is_text = 0; 
+            break;
+        }
+        count++;
+    }
+
+    fclose(file);
+    return is_text;
 }
 
 
@@ -17,22 +36,13 @@ void normalize_path(char *path) {
     }
 }
 
-int should_show_content(const char *filename) {
+int should_show_content(const char *filename, const char *full_path) {
     if (!content_flag) return 0;
 
-
-    const char *base_filename = strrchr(filename, '/');
-    base_filename = base_filename ? base_filename + 1 : filename;
-    for (int i = 0; content_exceptions[i] != NULL; i++) {
-        if (strcmp(base_filename, content_exceptions[i]) == 0)
-            return 1;
-    }
-
-
     if (content_type_count == 0) {
-        return is_text_file(filename);
+        // Pass only full_path to is_text_file
+        return is_text_file(full_path);
     }
-
 
     const char *ext = strrchr(filename, '.');
     if (!ext) return 0;

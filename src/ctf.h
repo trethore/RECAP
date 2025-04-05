@@ -34,7 +34,6 @@ extern char output_name[MAX_PATH_SIZE];
 extern char *pastebin_api_key; 
 
 extern const char *compiled_exts[];
-extern const char *content_exceptions[];
 
 void parse_arguments(int argc, char *argv[]);
 void load_gitignore(void);
@@ -47,9 +46,9 @@ void compute_relative_path(const char *base_path, const char *entry_name, char *
 int is_excluded_path(const char *rel_path);
 int print_path_hierarchy(const char *path);
 
-int is_text_file(const char *filename);
+int is_text_file(const char *full_path); // Removed filename
 void normalize_path(char *path);
-int should_show_content(const char *filename);
+int should_show_content(const char *filename, const char *full_path);
 char *get_output_filename(void);
 char *upload_to_gist(const char *filepath, const char *api_key);
 
