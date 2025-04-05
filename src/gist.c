@@ -113,12 +113,24 @@ char *upload_to_gist(const char *filepath, const char *github_token) {
         char *end = strchr(start, '"');
         if (end) {
             size_t len = end - start;
-            url = malloc(len + 1);
-            strncpy(url, start, len);
-            url[len] = '\0';
+            char *base_url = malloc(len + 1);
+            if (!base_url) { /* handle malloc failure */ }
+
+            strncpy(base_url, start, len);
+            base_url[len] = '\0';
+
+            size_t raw_len = len + strlen("/raw");
+            url = malloc(raw_len + 1);
+            if (!url) { 
+                printf(stderr, "Memory allocation failed for URL.\n");
+            }else {
+                snprintf(url, raw_len + 1, "%s/raw", base_url);                
+            }
+            free(base_url);
         }
     }
 
     free(chunk.memory);
+
     return url;
 }
