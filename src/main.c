@@ -19,8 +19,6 @@ FILE* output = NULL;
 char output_dir[MAX_PATH_SIZE] = ".";
 char output_name[MAX_PATH_SIZE] = "";
 
-const char* compiled_exts[] = { "exe", "bin", "o", "obj", "class", "a", "so", "dll", "lib", NULL };
-
 int main(int argc, char* argv[]) {
     curl_global_init(CURL_GLOBAL_ALL);
     parse_arguments(argc, argv);

@@ -34,8 +34,6 @@ extern char output_dir[MAX_PATH_SIZE];
 extern char output_name[MAX_PATH_SIZE];
 extern char* gist_api_key;
 
-extern const char* compiled_exts[];
-
 void parse_arguments(int argc, char* argv[]);
 void load_gitignore(void);
 void clear_ctf_output_files(void);
