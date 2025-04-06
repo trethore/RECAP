@@ -7,16 +7,16 @@
 #include <dirent.h>
 #include <ctype.h>
 
-char *gist_api_key = NULL;
+char* gist_api_key = NULL;
 
 void clear_ctf_output_files(void) {
 
-    DIR *dir = opendir(".");
+    DIR* dir = opendir(".");
     if (!dir) {
         perror("opendir for clearing");
         return;
     }
-    struct dirent *entry;
+    struct dirent* entry;
     while ((entry = readdir(dir)) != NULL) {
         if (strncmp(entry->d_name, "ctf-output", strlen("ctf-output")) == 0) {
 
@@ -29,7 +29,7 @@ void clear_ctf_output_files(void) {
 }
 
 void load_gitignore(void) {
-    FILE *git_ignore_file = fopen(".gitignore", "r");
+    FILE* git_ignore_file = fopen(".gitignore", "r");
     if (!git_ignore_file) {
 
         return;
@@ -42,7 +42,7 @@ void load_gitignore(void) {
 
         line[strcspn(line, "\r\n")] = 0;
 
-        char *trimmed_line = line;
+        char* trimmed_line = line;
         while (isspace((unsigned char)*trimmed_line)) trimmed_line++;
 
         if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
@@ -54,7 +54,8 @@ void load_gitignore(void) {
             gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
             exclude_patterns[exclude_count++] = gitignore_entries[gitignore_idx];
             gitignore_idx++;
-        } else {
+        }
+        else {
             if (exclude_count >= MAX_PATTERNS) {
                 fprintf(stderr, "Warning: Maximum number of exclude patterns (%d) reached while reading .gitignore.\n", MAX_PATTERNS);
             }
@@ -64,7 +65,7 @@ void load_gitignore(void) {
     fclose(git_ignore_file);
 }
 
-void parse_arguments(int argc, char *argv[]) {
+void parse_arguments(int argc, char* argv[]) {
     include_count = 0;
     exclude_count = 0;
     content_specifier_count = 0;
@@ -76,7 +77,8 @@ void parse_arguments(int argc, char *argv[]) {
             clear_ctf_output_files();
             printf("Cleared ctf-output files.\n");
             exit(0);
-        } else if (strcmp(argv[i], "--content") == 0) {
+        }
+        else if (strcmp(argv[i], "--content") == 0) {
             content_flag = 1;
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 i++;
@@ -91,7 +93,8 @@ void parse_arguments(int argc, char *argv[]) {
                 }
                 i--;
             }
-        } else if (strcmp(argv[i], "--include") == 0) {
+        }
+        else if (strcmp(argv[i], "--include") == 0) {
             if (++i < argc) {
                 while (i < argc && argv[i][0] != '-') {
                     if (include_count < MAX_PATTERNS)
@@ -103,11 +106,13 @@ void parse_arguments(int argc, char *argv[]) {
                     i++;
                 }
                 i--;
-            } else {
+            }
+            else {
                 fprintf(stderr, "Error: --include option requires at least one argument.\n");
                 exit(1);
             }
-        } else if (strcmp(argv[i], "--exclude") == 0) {
+        }
+        else if (strcmp(argv[i], "--exclude") == 0) {
             if (++i < argc) {
                 while (i < argc && argv[i][0] != '-') {
                     if (exclude_count < MAX_PATTERNS)
@@ -119,22 +124,28 @@ void parse_arguments(int argc, char *argv[]) {
                     i++;
                 }
                 i--;
-            } else {
+            }
+            else {
                 fprintf(stderr, "Error: --exclude option requires at least one argument.\n");
                 exit(1);
             }
-        } else if (strcmp(argv[i], "--git") == 0) {
+        }
+        else if (strcmp(argv[i], "--git") == 0) {
             git_flag = 1;
-        } else if (strcmp(argv[i], "--dir") == 0 && i + 1 < argc) {
+        }
+        else if (strcmp(argv[i], "--dir") == 0 && i + 1 < argc) {
             strncpy(output_dir, argv[++i], MAX_PATH_SIZE - 1);
             output_dir[MAX_PATH_SIZE - 1] = '\0';
             normalize_path(output_dir);
-        } else if (strcmp(argv[i], "--name") == 0 && i + 1 < argc) {
+        }
+        else if (strcmp(argv[i], "--name") == 0 && i + 1 < argc) {
             strncpy(output_name, argv[++i], MAX_PATH_SIZE - 1);
             output_name[MAX_PATH_SIZE - 1] = '\0';
-        } else if (strcmp(argv[i], "--paste") == 0 && i + 1 < argc) {
+        }
+        else if (strcmp(argv[i], "--paste") == 0 && i + 1 < argc) {
             gist_api_key = argv[++i];
-        } else {
+        }
+        else {
             fprintf(stderr, "Unknown option or missing argument: %s\n", argv[i]);
             exit(1);
         }
