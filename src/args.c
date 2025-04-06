@@ -65,6 +65,22 @@ void load_gitignore(void) {
     fclose(git_ignore_file);
 }
 
+void print_help(void) {
+    printf("Usage: ctf [options]\n");
+    printf("Options:\n");
+    printf("  --help, -h            Show this help message and exit\n");
+    printf("  --clear               Remove previous ctf-output files\n");
+    printf("  --content, -c [exts]  Include content of files with given extensions\n");
+    printf("  --include, -i paths   Include specific files or directories\n");
+    printf("  --exclude, -e paths   Exclude specific files or directories\n");
+    printf("  --git, -g             Use .gitignore for exclusions\n");
+    printf("  --dir, -d DIR         Output directory\n");
+    printf("  --name, -n NAME       Output filename\n");
+    printf("  --paste, -p API_KEY   Upload output as GitHub Gist\n");
+    printf("\nExample:\n");
+    printf("  ./ctf -g -c c h -i src include -e build\n");
+}
+
 void parse_arguments(int argc, char* argv[]) {
     include_count = 0;
     exclude_count = 0;
@@ -73,7 +89,11 @@ void parse_arguments(int argc, char* argv[]) {
     git_flag = 0;
 
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--clear") == 0) {
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+            print_help();
+            exit(0);
+        }
+        else if (strcmp(argv[i], "--clear") == 0) {
             clear_ctf_output_files();
             printf("Cleared ctf-output files.\n");
             exit(0);

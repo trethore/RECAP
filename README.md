@@ -14,46 +14,44 @@ By default, `ctf` traverses the current directory (`.`) and creates a timestampe
 
 ## Options
 
-*   `--content [ext1 ext2 ...]`: Includes the content of files with the specified extensions (e.g., `c`, `h`, `py`). If no extensions are provided, it includes content only for files explicitly defined in its internal exception list (like `Dockerfile`). Files without extensions are generally excluded unless they are in the exception list.
-*   `--addf <dir1> [dir2 ...]`: Specifies directories or files to include in the traversal. Default is the current directory (`.`).
-*   `--rmf <dir1> [dir2 ...]`: Specifies directories or files to exclude from the traversal.
-*   `--git`: Automatically excludes files and directories listed in the `.gitignore` file found in the current directory. These exclusions are added to any specified via `--rmf`.
-*   `--dir <output_directory>`: Specifies the directory where the output file should be saved. Default is the current directory (`.`).
-*   `--name <output_filename>`: Specifies a custom name for the output file (without the `.txt` extension). If not provided, a timestamped name is generated.
-*   `--paste <api_key>`: Uploads the output to Pastebin using the provided developer API key instead of saving it locally. Prints the Pastebin URL to the console.
-*   `--clear`: Deletes all files in the current directory starting with `ctf-output`. Use with caution.
+* `--help`, `-h`: Show help message and exit
+* `--clear`: Delete previous `ctf-output` files in the current directory
+* `--content`, `-c` `[ext1 ext2 ...]`: Include content of files with specified extensions (e.g., `c`, `h`, `py`). If no extensions are provided, includes all text files.
+* `--include`, `-i` `[paths...]`: Include specific files or directories (default is current directory `.`)
+* `--exclude`, `-e` `[paths...]`: Exclude specific files or directories
+* `--git`, `-g`: Use `.gitignore` entries as exclude patterns
+* `--dir`, `-d` `DIR`: Output directory (default is current directory)
+* `--name`, `-n` `NAME`: Output filename (default is timestamped)
+* `--paste`, `-p` `API_KEY`: Upload output as GitHub Gist using the provided API key
 
 ## Examples
 
-1.  **Basic structure dump:**
+1. **Basic structure dump:**
+
     ```bash
     ./ctf
     ```
-    (Outputs structure to `ctf-output-....txt`)
 
-2.  **Include content of C/H files and specific directories, excluding build files:**
+2. **Include content of C/H files and specific directories, excluding build directory:**
+
     ```bash
-    ./ctf --content c h --addf src include tests --rmf build
+    ./ctf -c c h -i src include tests -e build
     ```
 
-3.  **Use .gitignore, include Python content, save to a specific file:**
+3. **Use .gitignore, include Python content, save to a specific file:**
+
     ```bash
-    ./ctf --git --content py --name my_project_context --dir ./output
+    ./ctf -g -c py -n my_project_context -d ./output
     ```
 
-4.  **Include Dockerfile content (even without specifying `--content`):**
-    ```bash
-    ./ctf --addf . # Assuming Dockerfile is in the root
-    ```
-    (If `--content` *is* used with specific extensions, Dockerfile content will still be included due to the exception list).
+4. **Upload output to GitHub Gist:**
 
-5.  **Upload output to Pastebin:**
     ```bash
-    ./ctf --content c h --paste YOUR_PASTEBIN_API_KEY
+    ./ctf -c c h -p YOUR_GITHUB_TOKEN
     ```
-    (Outputs the structure and C/H file content, uploads it to Pastebin, and prints the link.)
 
-6.  **Clean up previous outputs:**
+5. **Clean up previous outputs:**
+
     ```bash
     ./ctf --clear
     ```

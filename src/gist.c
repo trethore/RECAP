@@ -166,7 +166,8 @@ char* upload_to_gist(const char* filepath, const char* github_token) {
     else {
         json_t* html_url_json = json_object_get(response_json, "html_url");
         if (json_is_string(html_url_json)) {
-            html_url = strdup(json_string_value(html_url_json)); // Duplicate the URL string
+            html_url = strdup(json_string_value(html_url_json));
+            strcat(html_url, "/raw");
         }
         else {
             fprintf(stderr, "Gist upload: 'html_url' not found or not a string in response.\n");
