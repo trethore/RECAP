@@ -120,7 +120,7 @@ int should_show_content(const char* filename, const char* full_path) {
             return 1;
         }
 
-        if (strcmp(spec, "null") == 0 && ext == NULL) {
+        if (strcmp(spec, "null") == 0 && ext == NULL && is_text_file(full_path)) {
             return 1;
         }
 
