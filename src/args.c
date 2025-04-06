@@ -1,8 +1,13 @@
 // parse args
 #include "ctf.h"
-#include <curl/curl.h> 
+#include <curl/curl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <ctype.h>
 
-char *pastebin_api_key = NULL; 
+char *gist_api_key = NULL;
 
 void clear_ctf_output_files(void) {
 
@@ -30,30 +35,29 @@ void load_gitignore(void) {
         return;
     }
 
+    int gitignore_idx = 0; // Initialize index for gitignore_entries
+
     char line[MAX_PATH_SIZE];
     while (fgets(line, sizeof(line), git_ignore_file)) {
 
         line[strcspn(line, "\r\n")] = 0;
 
-
         char *trimmed_line = line;
         while (isspace((unsigned char)*trimmed_line)) trimmed_line++;
-
 
         if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
             continue;
         }
 
-
-        if (rmf_count < MAX_RMF) {
-
-            strncpy(gitignore_entries[rmf_count], trimmed_line, MAX_PATH_SIZE - 1);
-            gitignore_entries[rmf_count][MAX_PATH_SIZE - 1] = '\0';
-
-            rmf_dirs[rmf_count] = gitignore_entries[rmf_count];
-            rmf_count++;
+        if (exclude_count < MAX_PATTERNS && gitignore_idx < MAX_GITIGNORE_ENTRIES) {
+            strncpy(gitignore_entries[gitignore_idx], trimmed_line, MAX_PATH_SIZE - 1);
+            gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
+            exclude_patterns[exclude_count++] = gitignore_entries[gitignore_idx];
+            gitignore_idx++;
         } else {
-            fprintf(stderr, "Warning: Maximum number of ignored paths (%d) reached from .gitignore.\n", MAX_RMF);
+            if (exclude_count >= MAX_PATTERNS) {
+                fprintf(stderr, "Warning: Maximum number of exclude patterns (%d) reached while reading .gitignore.\n", MAX_PATTERNS);
+            }
             break;
         }
     }
@@ -61,6 +65,12 @@ void load_gitignore(void) {
 }
 
 void parse_arguments(int argc, char *argv[]) {
+    include_count = 0;
+    exclude_count = 0;
+    content_specifier_count = 0;
+    content_flag = 0;
+    git_flag = 0;
+
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--clear") == 0) {
             clear_ctf_output_files();
@@ -68,63 +78,68 @@ void parse_arguments(int argc, char *argv[]) {
             exit(0);
         } else if (strcmp(argv[i], "--content") == 0) {
             content_flag = 1;
-            i++;
-
-            while (i < argc && argv[i][0] != '-') {
-                if (content_type_count < MAX_CONTENT_TYPES)
-                    content_types[content_type_count++] = argv[i];
-                else {
-                    fprintf(stderr, "Too many content types specified. Max allowed is %d\n", MAX_CONTENT_TYPES);
-                    exit(1);
-                }
+            if (i + 1 < argc && argv[i + 1][0] != '-') {
                 i++;
-            }
-            i--;
-        } else if (strcmp(argv[i], "--addf") == 0) {
-            i++;
-            while (i < argc && argv[i][0] != '-') {
-                if (addf_count < MAX_ADDF)
-                    addf_dirs[addf_count++] = argv[i];
-                else {
-                    fprintf(stderr, "Too many addf directories specified. Max allowed is %d\n", MAX_ADDF);
-                    exit(1);
+                while (i < argc && argv[i][0] != '-') {
+                    if (content_specifier_count < MAX_CONTENT_SPECIFIERS)
+                        content_specifiers[content_specifier_count++] = argv[i];
+                    else {
+                        fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
+                        exit(1);
+                    }
+                    i++;
                 }
-                i++;
+                i--;
             }
-            i--;
-        } else if (strcmp(argv[i], "--rmf") == 0) {
-            i++;
-            while (i < argc && argv[i][0] != '-') {
-                if (rmf_count < MAX_RMF) {
-
-
-
-                    rmf_dirs[rmf_count++] = argv[i];
-                } else {
-                    fprintf(stderr, "Too many rmf directories specified. Max allowed is %d\n", MAX_RMF);
-                    exit(1);
+        } else if (strcmp(argv[i], "--include") == 0) {
+            if (++i < argc) {
+                while (i < argc && argv[i][0] != '-') {
+                    if (include_count < MAX_PATTERNS)
+                        include_patterns[include_count++] = argv[i];
+                    else {
+                        fprintf(stderr, "Too many include patterns specified. Max allowed is %d\n", MAX_PATTERNS);
+                        exit(1);
+                    }
+                    i++;
                 }
-                i++;
+                i--;
+            } else {
+                fprintf(stderr, "Error: --include option requires at least one argument.\n");
+                exit(1);
             }
-            i--;
+        } else if (strcmp(argv[i], "--exclude") == 0) {
+            if (++i < argc) {
+                while (i < argc && argv[i][0] != '-') {
+                    if (exclude_count < MAX_PATTERNS)
+                        exclude_patterns[exclude_count++] = argv[i];
+                    else {
+                        fprintf(stderr, "Too many exclude patterns specified. Max allowed is %d\n", MAX_PATTERNS);
+                        exit(1);
+                    }
+                    i++;
+                }
+                i--;
+            } else {
+                fprintf(stderr, "Error: --exclude option requires at least one argument.\n");
+                exit(1);
+            }
         } else if (strcmp(argv[i], "--git") == 0) {
-             git_flag = 1;
+            git_flag = 1;
         } else if (strcmp(argv[i], "--dir") == 0 && i + 1 < argc) {
             strncpy(output_dir, argv[++i], MAX_PATH_SIZE - 1);
             output_dir[MAX_PATH_SIZE - 1] = '\0';
             normalize_path(output_dir);
         } else if (strcmp(argv[i], "--name") == 0 && i + 1 < argc) {
             strncpy(output_name, argv[++i], MAX_PATH_SIZE - 1);
-             output_name[MAX_PATH_SIZE - 1] = '\0';
+            output_name[MAX_PATH_SIZE - 1] = '\0';
         } else if (strcmp(argv[i], "--paste") == 0 && i + 1 < argc) {
-            pastebin_api_key = argv[++i];
+            gist_api_key = argv[++i];
         } else {
-             fprintf(stderr, "Unknown option or missing argument: %s\n", argv[i]);
-
-             exit(1);
+            fprintf(stderr, "Unknown option or missing argument: %s\n", argv[i]);
+            exit(1);
         }
     }
 
-    if (addf_count == 0)
-        addf_dirs[addf_count++] = ".";
+    if (include_count == 0)
+        include_patterns[include_count++] = ".";
 }
