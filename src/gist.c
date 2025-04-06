@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "ctf.h"
 #include <curl/curl.h>
 #include <sys/stat.h>
