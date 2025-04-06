@@ -1,5 +1,7 @@
 {
     "files.associations": {
-        "ctf.h": "c"
+        "ctf.h": "c",
+        "stat.h": "c",
+        "dirent.h": "c"
     }
 }

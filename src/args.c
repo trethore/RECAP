@@ -35,7 +35,7 @@ void load_gitignore(void) {
         return;
     }
 
-    int gitignore_idx = 0; // Initialize index for gitignore_entries
+    int gitignore_idx = 0;
 
     char line[MAX_PATH_SIZE];
     while (fgets(line, sizeof(line), git_ignore_file)) {
