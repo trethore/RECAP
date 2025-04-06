@@ -120,12 +120,15 @@ int should_show_content(const char* filename, const char* full_path) {
             return 1;
         }
 
+        if (strcmp(spec, "null") == 0 && ext == NULL) {
+            return 1;
+        }
+
         if (ext != NULL && strchr(spec, '.') == NULL && strchr(spec, '/') == NULL) {
             if (strcmp(ext, spec) == 0) {
                 return 1;
             }
         }
-
     }
 
     return 0;
