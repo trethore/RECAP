@@ -11,7 +11,7 @@
 
 void print_indent(int depth) {
     for (int i = 0; i < depth; i++) {
-        fprintf(output, "  ");
+        fprintf(output, "\t");
     }
 }
 
