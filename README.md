@@ -55,3 +55,51 @@ By default, `ctf` traverses the current directory (`.`) and creates a timestampe
     ```bash
     ./ctf --clear
     ```
+
+## Building the Project
+
+### Dependencies
+
+This project requires the following libraries:
+
+* libcurl (for HTTP requests)
+* jansson (for JSON parsing)
+
+On Debian/Ubuntu systems, you can install these dependencies with:
+
+```bash
+sudo apt-get install libcurl4-openssl-dev libjansson-dev
+```
+
+### Build Instructions
+
+1. Clone the repository:
+  
+  ```bash
+  git clone https://github.com/trethore/Context-To-File
+  cd Context-To-File
+  ```
+  
+2. Build the project:
+  
+  ```bash
+  make
+  ```
+  
+  This will compile the source files and create the `ctf` executable.
+  
+3. To clean the build files:
+  
+  ```bash
+  make clean
+  ```
+
+### Build Configuration
+
+The project is compiled with the following flags:
+
+* `-Wall -Wextra`: Enable all warnings
+* `-std=c11`: Use C11 standard
+* `-g`: Include debugging information
+
+If you need to modify the compiler or flags, you can edit the variables at the top of the Makefile.
