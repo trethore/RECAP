@@ -6,10 +6,9 @@
 #include <string.h>
 #include <dirent.h>
 #include <ctype.h>
-
+#include <getopt.h> 
 
 void clear_ctf_output_files() {
-
     DIR* dir = opendir(".");
     if (!dir) {
         perror("opendir for clearing");
@@ -18,7 +17,6 @@ void clear_ctf_output_files() {
     struct dirent* entry;
     while ((entry = readdir(dir)) != NULL) {
         if (strncmp(entry->d_name, "ctf-output", strlen("ctf-output")) == 0) {
-
             if (remove(entry->d_name) != 0) {
                 perror("remove ctf-output file");
             }
@@ -32,16 +30,13 @@ void load_gitignore(exclude_patterns_ctx* exclude_ctx) {
     if (!git_ignore_file) {
         return;
     }
-
     int gitignore_idx = 0;
     char line[MAX_PATH_SIZE];
-
     while (fgets(line, sizeof(line), git_ignore_file)) {
         line[strcspn(line, "\r\n")] = 0;
         char* trimmed_line = line;
-
-        while (isspace((unsigned char)*trimmed_line)) trimmed_line++;
-
+        while (isspace((unsigned char)*trimmed_line))
+            trimmed_line++;
         if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
             continue;
         }
@@ -67,120 +62,110 @@ void print_help() {
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
     printf("  --clear               Remove previous ctf-output files\n");
-    printf("  --content, -c [exts]  Include content of files with given extensions\n");
-    printf("  --include, -i paths   Include specific files or directories\n");
-    printf("  --exclude, -e paths   Exclude specific files or directories\n");
+    printf("  --content, -c [exts]  Include content of files with given extensions (comma separated)\n");
+    printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
+    printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
     printf("  --git, -g             Use .gitignore for exclusions\n");
     printf("  --dir, -d DIR         Output directory\n");
     printf("  --name, -n NAME       Output filename\n");
     printf("  --paste, -p API_KEY   Upload output as GitHub Gist\n");
     printf("\nExample:\n");
-    printf("  ./ctf -g -c c h -i src include -e build\n");
+    printf("  ./ctf -g -c c,h -i src -e build\n");
 }
 
-void parse_arguments(int argc, char* argv[], include_patterns_ctx* include_ctx, exclude_patterns_ctx* exclude_ctx, output_ctx* output_context, content_ctx* content_context, char** gist_api_key) {
+
+void parse_arguments(int argc, char* argv[],
+    include_patterns_ctx* include_ctx,
+    exclude_patterns_ctx* exclude_ctx,
+    output_ctx* output_context,
+    content_ctx* content_context,
+    char** gist_api_key) {
     include_ctx->include_count = 0;
     exclude_ctx->exclude_count = 0;
     content_context->content_specifier_count = 0;
     content_context->content_flag = 0;
+    *gist_api_key = NULL;
 
-    for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
+    static struct option long_options[] = {
+        {"help",    no_argument,       0, 'h'},
+        {"clear",   no_argument,       0, 'C'},  // Nous définissons "clear" avec l'option courte 'C'
+        {"content", required_argument, 0, 'c'},
+        {"include", required_argument, 0, 'i'},
+        {"exclude", required_argument, 0, 'e'},
+        {"git",     no_argument,       0, 'g'},
+        {"dir",     required_argument, 0, 'd'},
+        {"name",    required_argument, 0, 'n'},
+        {"paste",   required_argument, 0, 'p'},
+        {0, 0, 0, 0}
+    };
+
+    int opt;
+    int option_index = 0;
+    while ((opt = getopt_long(argc, argv, "hCc:i:e:gd:n:p:", long_options, &option_index)) != -1) {
+        switch (opt) {
+        case 'h':
             print_help();
             exit(0);
-        }
-        else if (strcmp(argv[i], "--clear") == 0) {
+            break;
+        case 'C':
             clear_ctf_output_files();
             printf("Cleared ctf-output files.\n");
             exit(0);
-        }
-        else if (strcmp(argv[i], "--content") == 0 || strcmp(argv[i], "-c") == 0) {
+            break;
+        case 'c': {
             content_context->content_flag = 1;
-            if (i + 1 < argc && argv[i + 1][0] != '-') {
-                i++;
-                while (i < argc && argv[i][0] != '-') {
-                    if (content_context->content_specifier_count < MAX_CONTENT_SPECIFIERS)
-                        content_context->content_specifiers[content_context->content_specifier_count++] = argv[i];
-                    else {
-                        fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
-                        exit(1);
-                    }
-                    i++;
-                }
-                i--;
-            }
-        }
-        else if (strcmp(argv[i], "--include") == 0 || strcmp(argv[i], "-i") == 0) {
-            if (++i < argc) {
-                while (i < argc && argv[i][0] != '-') {
-                    if (include_ctx->include_count < MAX_PATTERNS)
-                        include_ctx->include_patterns[include_ctx->include_count++] = argv[i];
-                    else {
-                        fprintf(stderr, "Too many include patterns specified. Max allowed is %d\n", MAX_PATTERNS);
-                        exit(1);
-                    }
-                    i++;
-                }
-                i--;
-            }
-            else {
-                fprintf(stderr, "Error: --include/-i requires at least one argument.\n");
+            char* arg_copy = strdup(optarg);
+            if (!arg_copy) {
+                fprintf(stderr, "Memory allocation error\n");
                 exit(1);
             }
-        }
-        else if (strcmp(argv[i], "--exclude") == 0 || strcmp(argv[i], "-e") == 0) {
-            if (++i < argc) {
-                while (i < argc && argv[i][0] != '-') {
-                    if (exclude_ctx->exclude_count < MAX_PATTERNS)
-                        exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = argv[i];
-                    else {
-                        fprintf(stderr, "Too many exclude patterns specified. Max allowed is %d\n", MAX_PATTERNS);
-                        exit(1);
-                    }
-                    i++;
+            char* token = strtok(arg_copy, ",");
+            while (token != NULL) {
+                if (content_context->content_specifier_count < MAX_CONTENT_SPECIFIERS) {
+                    content_context->content_specifiers[content_context->content_specifier_count++] = token;
                 }
-                i--;
+                else {
+                    fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
+                    free(arg_copy);
+                    exit(1);
+                }
+                token = strtok(NULL, ",");
             }
+            break;
+        }
+        case 'i':
+            if (include_ctx->include_count < MAX_PATTERNS)
+                include_ctx->include_patterns[include_ctx->include_count++] = optarg;
             else {
-                fprintf(stderr, "Error: --exclude/-e requires at least one argument.\n");
+                fprintf(stderr, "Too many include patterns specified. Max allowed is %d\n", MAX_PATTERNS);
                 exit(1);
             }
-        }
-        else if (strcmp(argv[i], "--git") == 0 || strcmp(argv[i], "-g") == 0) {
+            break;
+        case 'e':
+            if (exclude_ctx->exclude_count < MAX_PATTERNS)
+                exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = optarg;
+            else {
+                fprintf(stderr, "Too many exclude patterns specified. Max allowed is %d\n", MAX_PATTERNS);
+                exit(1);
+            }
+            break;
+        case 'g':
             load_gitignore(exclude_ctx);
-        }
-        else if (strcmp(argv[i], "--dir") == 0 || strcmp(argv[i], "-d") == 0) {
-            if (++i < argc) {
-                strncpy(output_context->output_dir, argv[i], MAX_PATH_SIZE - 1);
-                output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
-                normalize_path(output_context->output_dir);
-            }
-            else {
-                fprintf(stderr, "Error: --dir requires an argument.\n");
-                exit(1);
-            }
-        }
-        else if (strcmp(argv[i], "--name") == 0 || strcmp(argv[i], "-n") == 0) {
-            if (++i < argc) {
-                strncpy(output_context->output_name, argv[i], MAX_PATH_SIZE - 1);
-                output_context->output_name[MAX_PATH_SIZE - 1] = '\0';
-            }
-            else {
-                fprintf(stderr, "Error: --name requires an argument.\n");
-                exit(1);
-            }
-        }
-        else if (strcmp(argv[i], "--paste") == 0 || strcmp(argv[i], "-p") == 0) {
-            if (++i < argc) {
-                gist_api_key = argv[i];
-            }
-            else {
-                fprintf(stderr, "Error: --paste/-p requires an API key argument.\n");
-                exit(1);
-            }
-        }
-        else {
-            fprintf(stderr, "Unknown option or missing argument: %s\n", argv[i]);
+            break;
+        case 'd':
+            strncpy(output_context->output_dir, optarg, MAX_PATH_SIZE - 1);
+            output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
+            normalize_path(output_context->output_dir);
+            break;
+        case 'n':
+            strncpy(output_context->output_name, optarg, MAX_PATH_SIZE - 1);
+            output_context->output_name[MAX_PATH_SIZE - 1] = '\0';
+            break;
+        case 'p':
+            *gist_api_key = optarg;
+            break;
+        case '?':
+        default:
             exit(1);
         }
     }

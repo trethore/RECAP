@@ -64,7 +64,6 @@ char* upload_to_gist(const char* filepath, const char* github_token) {
         return strdup("");
     }
 
-
     char* file_content = malloc(filesize + 1);
     if (!file_content) {
         fclose(file);
@@ -89,7 +88,6 @@ char* upload_to_gist(const char* filepath, const char* github_token) {
     json_t* files = json_object();
     json_t* file_obj = json_object();
     json_error_t error;
-
 
     json_object_set_new(file_obj, "content", json_string(file_content));
     json_object_set_new(files, filename_only, file_obj);

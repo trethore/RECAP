@@ -7,7 +7,6 @@
 #include <string.h>
 #include <time.h>
 
-
 int is_text_file(const char* full_path) {
     FILE* file = fopen(full_path, "rb");
     if (!file)
@@ -41,7 +40,6 @@ void normalize_path(char* path) {
     int write = 0;
     int start = 0;
     int last_slash = 0;
-
 
     if (path[0] == '/') {
         path[write++] = '/';
