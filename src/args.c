@@ -166,6 +166,7 @@ void parse_arguments(int argc, char* argv[],
             break;
         case '?':
         default:
+            print_help();
             exit(1);
         }
     }
