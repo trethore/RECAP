@@ -1,0 +1,47 @@
+---
+# Start with a known base style and override to match observed conventions.
+BasedOnStyle: LLVM
+
+# Indentation settings
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+ColumnLimit: 0
+
+# Keep the K&R/Attach brace style: opening braces on the same line.
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterControlStatement: false
+  AfterEnum: false
+  AfterFunction: false
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeElse: true
+
+# Single-line if/for/while are allowed without braces (as seen in the code).
+AllowShortIfStatementsOnASingleLine: true
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: false
+
+MaxEmptyLinesToKeep: 2047
+
+# Space rules
+SpaceBeforeParens: ControlStatements # Space after 'if', 'while', etc., none before function calls
+SpaceAfterCStyleCast: false # (Type*)var, with no space
+
+# Pointer alignment: "char* ptr" (star bound to the type).
+PointerAlignment: Left
+
+# Turn off include sorting; keep them in the order as-is.
+SortIncludes: Never
+
+# This style tries not to reflow large comment blocks.
+ReflowComments: false
+
+# Typically recommended so that case labels align with switch statements
+# (K&R style).
+IndentCaseLabels: false
+---
+

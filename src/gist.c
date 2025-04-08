@@ -2,10 +2,10 @@
 #include "ctf.h"
 #include <curl/curl.h>
 #include <sys/stat.h>
-#include <jansson.h> 
+#include <jansson.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h> 
+#include <stdio.h>
 
 struct MemoryStruct {
     char* memory;

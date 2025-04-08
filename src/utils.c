@@ -1,10 +1,10 @@
 // its what you expect from a utils file
 #include "ctf.h"
-#include <ctype.h>   
-#include <stdio.h>   
-#include <stdlib.h> 
-#include <string.h>  
-#include <time.h>   
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 int is_text_file(const char* full_path) {
     FILE* file = fopen(full_path, "rb");
