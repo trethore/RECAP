@@ -7,9 +7,8 @@
 #include <dirent.h>
 #include <ctype.h>
 
-char* gist_api_key = NULL;
 
-void clear_ctf_output_files(void) {
+void clear_ctf_output_files() {
 
     DIR* dir = opendir(".");
     if (!dir) {
@@ -28,35 +27,33 @@ void clear_ctf_output_files(void) {
     closedir(dir);
 }
 
-void load_gitignore(void) {
+void load_gitignore(exclude_patterns_ctx* exclude_ctx) {
     FILE* git_ignore_file = fopen(".gitignore", "r");
     if (!git_ignore_file) {
-
         return;
     }
 
     int gitignore_idx = 0;
-
     char line[MAX_PATH_SIZE];
+
     while (fgets(line, sizeof(line), git_ignore_file)) {
-
         line[strcspn(line, "\r\n")] = 0;
-
         char* trimmed_line = line;
+
         while (isspace((unsigned char)*trimmed_line)) trimmed_line++;
 
         if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
             continue;
         }
-
-        if (exclude_count < MAX_PATTERNS && gitignore_idx < MAX_GITIGNORE_ENTRIES) {
-            strncpy(gitignore_entries[gitignore_idx], trimmed_line, MAX_PATH_SIZE - 1);
-            gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
-            exclude_patterns[exclude_count++] = gitignore_entries[gitignore_idx];
+        // f this
+        if (exclude_ctx->exclude_count < MAX_PATTERNS && gitignore_idx < MAX_GITIGNORE_ENTRIES) {
+            strncpy(exclude_ctx->gitignore_entries[gitignore_idx], trimmed_line, MAX_PATH_SIZE - 1);
+            exclude_ctx->gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
+            exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = exclude_ctx->gitignore_entries[gitignore_idx];
             gitignore_idx++;
         }
         else {
-            if (exclude_count >= MAX_PATTERNS) {
+            if (exclude_ctx->exclude_count >= MAX_PATTERNS) {
                 fprintf(stderr, "Warning: Maximum number of exclude patterns (%d) reached while reading .gitignore.\n", MAX_PATTERNS);
             }
             break;
@@ -65,7 +62,7 @@ void load_gitignore(void) {
     fclose(git_ignore_file);
 }
 
-void print_help(void) {
+void print_help() {
     printf("Usage: ctf [options]\n");
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
@@ -81,12 +78,11 @@ void print_help(void) {
     printf("  ./ctf -g -c c h -i src include -e build\n");
 }
 
-void parse_arguments(int argc, char* argv[]) {
-    include_count = 0;
-    exclude_count = 0;
-    content_specifier_count = 0;
-    content_flag = 0;
-    git_flag = 0;
+void parse_arguments(int argc, char* argv[], include_patterns_ctx* include_ctx, exclude_patterns_ctx* exclude_ctx, output_ctx* output_context, content_ctx* content_context, char** gist_api_key) {
+    include_ctx->include_count = 0;
+    exclude_ctx->exclude_count = 0;
+    content_context->content_specifier_count = 0;
+    content_context->content_flag = 0;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i], "-h") == 0) {
@@ -99,12 +95,12 @@ void parse_arguments(int argc, char* argv[]) {
             exit(0);
         }
         else if (strcmp(argv[i], "--content") == 0 || strcmp(argv[i], "-c") == 0) {
-            content_flag = 1;
+            content_context->content_flag = 1;
             if (i + 1 < argc && argv[i + 1][0] != '-') {
                 i++;
                 while (i < argc && argv[i][0] != '-') {
-                    if (content_specifier_count < MAX_CONTENT_SPECIFIERS)
-                        content_specifiers[content_specifier_count++] = argv[i];
+                    if (content_context->content_specifier_count < MAX_CONTENT_SPECIFIERS)
+                        content_context->content_specifiers[content_context->content_specifier_count++] = argv[i];
                     else {
                         fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
                         exit(1);
@@ -117,8 +113,8 @@ void parse_arguments(int argc, char* argv[]) {
         else if (strcmp(argv[i], "--include") == 0 || strcmp(argv[i], "-i") == 0) {
             if (++i < argc) {
                 while (i < argc && argv[i][0] != '-') {
-                    if (include_count < MAX_PATTERNS)
-                        include_patterns[include_count++] = argv[i];
+                    if (include_ctx->include_count < MAX_PATTERNS)
+                        include_ctx->include_patterns[include_ctx->include_count++] = argv[i];
                     else {
                         fprintf(stderr, "Too many include patterns specified. Max allowed is %d\n", MAX_PATTERNS);
                         exit(1);
@@ -135,8 +131,8 @@ void parse_arguments(int argc, char* argv[]) {
         else if (strcmp(argv[i], "--exclude") == 0 || strcmp(argv[i], "-e") == 0) {
             if (++i < argc) {
                 while (i < argc && argv[i][0] != '-') {
-                    if (exclude_count < MAX_PATTERNS)
-                        exclude_patterns[exclude_count++] = argv[i];
+                    if (exclude_ctx->exclude_count < MAX_PATTERNS)
+                        exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = argv[i];
                     else {
                         fprintf(stderr, "Too many exclude patterns specified. Max allowed is %d\n", MAX_PATTERNS);
                         exit(1);
@@ -151,13 +147,13 @@ void parse_arguments(int argc, char* argv[]) {
             }
         }
         else if (strcmp(argv[i], "--git") == 0 || strcmp(argv[i], "-g") == 0) {
-            git_flag = 1;
+            load_gitignore(exclude_ctx);
         }
         else if (strcmp(argv[i], "--dir") == 0 || strcmp(argv[i], "-d") == 0) {
             if (++i < argc) {
-                strncpy(output_dir, argv[i], MAX_PATH_SIZE - 1);
-                output_dir[MAX_PATH_SIZE - 1] = '\0';
-                normalize_path(output_dir);
+                strncpy(output_context->output_dir, argv[i], MAX_PATH_SIZE - 1);
+                output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
+                normalize_path(output_context->output_dir);
             }
             else {
                 fprintf(stderr, "Error: --dir requires an argument.\n");
@@ -166,8 +162,8 @@ void parse_arguments(int argc, char* argv[]) {
         }
         else if (strcmp(argv[i], "--name") == 0 || strcmp(argv[i], "-n") == 0) {
             if (++i < argc) {
-                strncpy(output_name, argv[i], MAX_PATH_SIZE - 1);
-                output_name[MAX_PATH_SIZE - 1] = '\0';
+                strncpy(output_context->output_name, argv[i], MAX_PATH_SIZE - 1);
+                output_context->output_name[MAX_PATH_SIZE - 1] = '\0';
             }
             else {
                 fprintf(stderr, "Error: --name requires an argument.\n");
@@ -189,6 +185,6 @@ void parse_arguments(int argc, char* argv[]) {
         }
     }
 
-    if (include_count == 0)
-        include_patterns[include_count++] = ".";
+    if (include_ctx->include_count == 0)
+        include_ctx->include_patterns[include_ctx->include_count++] = ".";
 }
