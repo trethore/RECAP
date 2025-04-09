@@ -66,8 +66,6 @@ void print_help() {
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
     printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
     printf("  --git, -g             Use .gitignore for exclusions\n");
-    printf("  --dir, -d DIR         Output directory\n");
-    printf("  --name, -n NAME       Output filename\n");
     printf("  --paste, -p API_KEY   Upload output as GitHub Gist\n");
     printf("\nExample:\n");
     printf("  ./ctf -g -c c,h -i src -e build\n");
@@ -88,13 +86,11 @@ void parse_arguments(int argc, char* argv[],
 
     static struct option long_options[] = {
         {"help",    no_argument,       0, 'h'},
-        {"clear",   no_argument,       0, 'C'},  // Nous définissons "clear" avec l'option courte 'C'
+        {"clear",   no_argument,       0, 'C'},
         {"content", required_argument, 0, 'c'},
         {"include", required_argument, 0, 'i'},
         {"exclude", required_argument, 0, 'e'},
         {"git",     no_argument,       0, 'g'},
-        {"dir",     required_argument, 0, 'd'},
-        {"name",    required_argument, 0, 'n'},
         {"paste",   required_argument, 0, 'p'},
         {0, 0, 0, 0}
     };
@@ -151,15 +147,6 @@ void parse_arguments(int argc, char* argv[],
             break;
         case 'g':
             load_gitignore(exclude_ctx);
-            break;
-        case 'd':
-            strncpy(output_context->output_dir, optarg, MAX_PATH_SIZE - 1);
-            output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
-            normalize_path(output_context->output_dir);
-            break;
-        case 'n':
-            strncpy(output_context->output_name, optarg, MAX_PATH_SIZE - 1);
-            output_context->output_name[MAX_PATH_SIZE - 1] = '\0';
             break;
         case 'p':
             *gist_api_key = optarg;

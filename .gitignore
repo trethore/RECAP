@@ -1,6 +1,6 @@
 obj/
 
-ctf-output*
-ctf.exe
-ctf
+recap.exe
+recap
+recap-output*
 .env
