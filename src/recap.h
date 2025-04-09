@@ -41,7 +41,7 @@ typedef struct {
 
 void parse_arguments(int argc, char* argv[], include_patterns_ctx* include_ctx, exclude_patterns_ctx* exclude_ctx, output_ctx* output_context, content_ctx* content_context, char** gist_api_key);
 void load_gitignore(exclude_patterns_ctx* exclude_ctx);
-void clear_ctf_output_files(void);
+void clear_recap_output_files(const char* target_dir);
 
 void traverse_directory(const char* base_path, int depth, FILE* output, exclude_patterns_ctx* exclude_ctx, output_ctx* output_context, content_ctx* content_context);
 void print_indent(int depth, FILE* output);

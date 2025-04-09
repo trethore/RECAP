@@ -1,28 +1,66 @@
 // parse args
-#include "ctf.h"
+#include "recap.h"
 #include <curl/curl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <ctype.h>
-#include <getopt.h> 
+#include <getopt.h>
+#include <unistd.h> 
+#include <limits.h>
 
-void clear_ctf_output_files() {
-    DIR* dir = opendir(".");
-    if (!dir) {
-        perror("opendir for clearing");
+void clear_recap_output_files(const char* target_dir) {
+    char full_path[MAX_PATH_SIZE];
+    if (!target_dir || strlen(target_dir) == 0) {
+        target_dir = ".";
+    }
+
+    if (realpath(target_dir, full_path) == NULL) {
+        strncpy(full_path, target_dir, MAX_PATH_SIZE - 1);
+        full_path[MAX_PATH_SIZE - 1] = '\0';
+    }
+
+
+    printf("Warning: This will delete every file matching 'recap-output*' in '%s'.\n", full_path);
+    printf("Are you sure? (y/N): ");
+    char confirmation;
+    if (scanf(" %c", &confirmation) != 1 || tolower(confirmation) != 'y') {
+        printf("Operation cancelled.\n");
         return;
     }
+
+    DIR* dir = opendir(target_dir);
+    if (!dir) {
+        perror("opendir for clearing");
+        fprintf(stderr, "Failed to open directory: %s\n", target_dir);
+        return;
+    }
+
     struct dirent* entry;
+    int deleted_count = 0;
+    char file_to_remove[MAX_PATH_SIZE];
+
     while ((entry = readdir(dir)) != NULL) {
-        if (strncmp(entry->d_name, "ctf-output", strlen("ctf-output")) == 0) {
-            if (remove(entry->d_name) != 0) {
-                perror("remove ctf-output file");
+        if (strncmp(entry->d_name, "recap-output", strlen("recap-output")) == 0) {
+            snprintf(file_to_remove, sizeof(file_to_remove), "%s/%s", target_dir, entry->d_name);
+            if (remove(file_to_remove) == 0) {
+                printf("Deleted: %s\n", file_to_remove);
+                deleted_count++;
+            }
+            else {
+                perror("remove recap-output file");
+                fprintf(stderr, "Failed to delete: %s\n", file_to_remove);
             }
         }
     }
     closedir(dir);
+    if (deleted_count > 0) {
+        printf("Cleared %d recap-output file(s) from %s.\n", deleted_count, full_path);
+    }
+    else {
+        printf("No recap-output files found to clear in %s.\n", full_path);
+    }
 }
 
 void load_gitignore(exclude_patterns_ctx* exclude_ctx) {
@@ -58,17 +96,17 @@ void load_gitignore(exclude_patterns_ctx* exclude_ctx) {
 }
 
 void print_help() {
-    printf("Usage: ctf [options]\n");
+    printf("Usage: recap [options]\n");
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
-    printf("  --clear               Remove previous ctf-output files\n");
+    printf("  --clear [DIR]         Remove previous recap-output files (optionally from DIR)\n");
     printf("  --content, -c [exts]  Include content of files with given extensions (comma separated)\n");
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
     printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
     printf("  --git, -g             Use .gitignore for exclusions\n");
     printf("  --paste, -p API_KEY   Upload output as GitHub Gist\n");
     printf("\nExample:\n");
-    printf("  ./ctf -g -c c,h -i src -e build\n");
+    printf("  ./recap -i src -e build -c c h\n");
 }
 
 
@@ -85,27 +123,28 @@ void parse_arguments(int argc, char* argv[],
     *gist_api_key = NULL;
 
     static struct option long_options[] = {
-        {"help",    no_argument,       0, 'h'},
-        {"clear",   no_argument,       0, 'C'},
-        {"content", required_argument, 0, 'c'},
-        {"include", required_argument, 0, 'i'},
-        {"exclude", required_argument, 0, 'e'},
-        {"git",     no_argument,       0, 'g'},
-        {"paste",   required_argument, 0, 'p'},
+        {"help",       no_argument,       0, 'h'},
+        {"clear",      optional_argument, 0, 'C'}, // Changed to optional_argument
+        {"content",    required_argument, 0, 'c'},
+        {"include",    required_argument, 0, 'i'},
+        {"exclude",    required_argument, 0, 'e'},
+        {"git",        no_argument,       0, 'g'},
+        {"paste",      required_argument, 0, 'p'},
+        {"out",        required_argument, 0, 'o'},
+        {"output-dir", required_argument, 0, 'O'},
         {0, 0, 0, 0}
     };
 
     int opt;
     int option_index = 0;
-    while ((opt = getopt_long(argc, argv, "hCc:i:e:gd:n:p:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hC::c:i:e:gp:o:O:", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'h':
             print_help();
             exit(0);
             break;
         case 'C':
-            clear_ctf_output_files();
-            printf("Cleared ctf-output files.\n");
+            clear_recap_output_files(optarg);
             exit(0);
             break;
         case 'c': {

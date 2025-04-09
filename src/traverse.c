@@ -1,6 +1,6 @@
 // this file add some useful functions for traversing directories and files
 
-#include "ctf.h"
+#include "recap.h"
 #include <limits.h>
 #include <stdlib.h>
 #include <fnmatch.h>
@@ -127,7 +127,7 @@ int is_excluded(FILE* output, const char* rel_path, exclude_patterns_ctx* exclud
 
     const char* base = strrchr(path_to_check, '/');
     base = base ? base + 1 : path_to_check;
-    if (strcmp(base, "ctf") == 0 || strcmp(base, "ctf.exe") == 0)
+    if (strcmp(base, "recap") == 0 || strcmp(base, "recap.exe") == 0)
         return 1;
 
     for (int i = 0; i < exclude_ctx->exclude_count; i++) {

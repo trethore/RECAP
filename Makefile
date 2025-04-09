@@ -4,7 +4,7 @@ LIBS = -lcurl -ljansson
 
 SRCDIR = src
 OBJDIR = obj
-EXEC = ctf
+EXEC = recaf
 
 SOURCES = $(wildcard $(SRCDIR)/*.c) # Automatically find all .c files
 OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
@@ -15,7 +15,7 @@ all: $(EXEC)
 $(EXEC): $(OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.c $(SRCDIR)/ctf.h | $(OBJDIR)
+$(OBJDIR)/%.o: $(SRCDIR)/%.c $(SRCDIR)/recap.h | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJDIR):

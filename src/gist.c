@@ -1,5 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
-#include "ctf.h"
+#include "recap.h"
 #include <curl/curl.h>
 #include <sys/stat.h>
 #include <jansson.h>
@@ -91,7 +91,7 @@ char* upload_to_gist(const char* filepath, const char* github_token) {
 
     json_object_set_new(file_obj, "content", json_string(file_content));
     json_object_set_new(files, filename_only, file_obj);
-    json_object_set_new(root, "description", json_string("CTF Output"));
+    json_object_set_new(root, "description", json_string("RECAP Output"));
     json_object_set_new(root, "public", json_false());
     json_object_set_new(root, "files", files);
 
@@ -116,7 +116,7 @@ char* upload_to_gist(const char* filepath, const char* github_token) {
     headers = curl_slist_append(headers, auth_header);
     headers = curl_slist_append(headers, "Content-Type: application/json");
     headers = curl_slist_append(headers, "Accept: application/vnd.github.v3+json");
-    headers = curl_slist_append(headers, "User-Agent: ctf-tool-c");
+    headers = curl_slist_append(headers, "User-Agent: recap-tool-c");
 
     struct MemoryStruct chunk;
     chunk.memory = malloc(1);

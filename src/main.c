@@ -1,4 +1,4 @@
-#include "ctf.h"
+#include "recap.h"
 #include <curl/curl.h>
 #include <sys/stat.h>
 
@@ -10,9 +10,10 @@ int main(int argc, char* argv[]) {
     exclude_patterns_ctx exclude_ctx = { 0 };
     output_ctx output_context = { 0 };
     content_ctx content_context = { 0 };
-    // init curl
     curl_global_init(CURL_GLOBAL_ALL);
+
     parse_arguments(argc, argv, &include_ctx, &exclude_ctx, &output_context, &content_context, &gist_api_key);
+
     char* filename = get_output_filename(output, &output_context);
     if (!filename) {
         fprintf(stderr, "Failed to generate output filename.\n");

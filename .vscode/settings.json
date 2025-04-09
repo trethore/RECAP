@@ -2,6 +2,14 @@
     "files.associations": {
         "ctf.h": "c",
         "stat.h": "c",
-        "dirent.h": "c"
+        "dirent.h": "c",
+        "stdio.h": "c",
+        "recap.h": "c",
+        "curl.h": "c",
+        "jansson.h": "c",
+        "stdlib.h": "c",
+        "string.h": "c",
+        "time.h": "c",
+        "limits.h": "c"
     }
 }

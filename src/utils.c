@@ -1,6 +1,6 @@
 // its what you expect from a utils file
 
-#include "ctf.h"
+#include "recap.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -145,7 +145,7 @@ char* get_output_filename(FILE* output, output_ctx* output_context) {
         time_t now = time(NULL);
         struct tm* t = localtime(&now);
         char timestamp[64];
-        if (!t || strftime(timestamp, sizeof(timestamp), "ctf-output-%Y%m%d-%H%M%S.txt", t) == 0) {
+        if (!t || strftime(timestamp, sizeof(timestamp), "recap-output-%Y%m%d-%H%M%S.txt", t) == 0) {
             fprintf(stderr, "Error: Failed to generate timestamp.\n");
             free(filename);
             return NULL;
