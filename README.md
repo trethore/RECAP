@@ -9,7 +9,7 @@
 - [ ] Change `--paste` to check if an API key is provided in .env
 - [ ] Add `--out` output the generated text in a file
 - [ ] Add `--out-dir` output the generated text in a directory
-- [ ] Add a warning to `--clear` since it removes all ctf-output files
+- [X] Add a warning to `--clear` since it removes all ctf-output files
 - [X] Remove `--name` no longer useful
 - [X] Remove `--dir` no longer useful
 - [ ] Remove Herobrine

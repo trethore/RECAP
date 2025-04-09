@@ -4,9 +4,9 @@ LIBS = -lcurl -ljansson
 
 SRCDIR = src
 OBJDIR = obj
-EXEC = recaf
+EXEC = recap
 
-SOURCES = $(wildcard $(SRCDIR)/*.c) # Automatically find all .c files
+SOURCES = $(wildcard $(SRCDIR)/*.c) 
 OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
 
 all: $(EXEC)
