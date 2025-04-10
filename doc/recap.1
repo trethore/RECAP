@@ -1,0 +1,65 @@
+.TH RECAP 1 "April 2025" "recap 1.0" "User Commands"
+.SH NAME
+recap \- capture the structure and content of a workspace and consolidate it into a single text output
+.SH SYNOPSIS
+.B recap
+[\fIOPTION\fR]...
+.SH DESCRIPTION
+A command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code.
+.SH OPTIONS
+Mandatory arguments to long options are mandatory for short options too.
+.TP
+.B \-C, \-\-clear[=\fIDIR]
+remove previous recap-output files (optionally from DIR)
+.TP
+.B \-c, \-\-content=\fIEXTS
+include content of files with given the extensions
+.I EXTS
+is a comma-separated list of file extensions, without the leading dot
+.TP
+.B \-i, \-\-include=\fIPATH
+include a specific file or directory; can be repeated
+.TP
+.B \-e, \-\-exclude=\fIPATH
+exclude a specific file or directory; can be repeated
+.TP
+.B \-g, \-\-git
+attemps to open the file
+.I .gitignore
+in the current directory and load exclusions from it
+.TP
+.B \-p, \-\-paste[\=\fIGIST_API_KEY]
+upload output as GitHub Gist; if no argument is specified, it reads from the
+.I GIST_API_KEY
+environment variable
+.TP
+.B \-o, \-\-output=\fIFILE
+output to
+.I FILE
+.TP
+.B \-O, \-\-output-dir=\fIDIR
+output a timestampped file to
+.I DIR
+.TP
+.B \-h, \-\-help
+output a help message and exit
+.SH ENVIRONMENT
+.RS
+.TS
+tab(:);
+l l.
+GIST_API_KEY:GitHub Gist API key; expected when \fB\-\-paste\fR is passed without an argument.
+.TE
+.RE
+.SH EXIT STATUS
+TODO
+.SH EXAMPLES
+TODO
+.SH AUTHOR
+Written by Trethore and Scover.
+.SH REPORTING BUGS
+Report issues at:
+.BR https://github.com/trethore/RECAP
+.SH SEE ALSO
+.if !d MR .ds MR \\fB\\$1\\fR(\\$2)
+.MR cat 1
