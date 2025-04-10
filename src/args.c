@@ -102,7 +102,7 @@ void print_help() {
     printf("Usage: recap [options]\n");
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
-    printf("  --clear [DIR]         Remove previous recap-output files (optionally from DIR)\n");
+    printf("  --clear, -C [DIR]         Remove previous recap-output files (optionally from DIR)\n");
     printf("  --content, -c [exts]  Include content of files with given extensions\n");
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
     printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
@@ -134,7 +134,7 @@ void parse_arguments(int argc, char* argv[],
         {"git",        no_argument,       0, 'g'},
         {"paste",      required_argument, 0, 'p'},
         // Add handling for these two:
-        {"out",        required_argument, 0, 'o'},
+        {"output",        required_argument, 0, 'o'},
         {"output-dir", required_argument, 0, 'O'},
         {0, 0, 0, 0}
     };
@@ -147,7 +147,16 @@ void parse_arguments(int argc, char* argv[],
             exit(0);
 
         case 'C':
-            clear_recap_output_files(optarg);
+            if (!optarg && optind < argc && argv[optind][0] != '-') {
+                optarg = argv[optind++];
+            }
+
+            if (optarg) {
+                clear_recap_output_files(optarg);
+            }
+            else {
+                clear_recap_output_files(".");
+            }
             exit(0);
 
         case 'c': {
@@ -204,13 +213,11 @@ void parse_arguments(int argc, char* argv[],
             *gist_api_key = optarg;
             break;
 
-            // Properly handle -o / --out
         case 'o':
             strncpy(output_context->output_name, optarg, MAX_PATH_SIZE - 1);
             output_context->output_name[MAX_PATH_SIZE - 1] = '\0';
             break;
 
-            // Properly handle -O / --output-dir
         case 'O':
             strncpy(output_context->output_dir, optarg, MAX_PATH_SIZE - 1);
             output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
@@ -223,7 +230,7 @@ void parse_arguments(int argc, char* argv[],
         }
     }
 
-    // If no -i was given, default to '.'
+
     if (include_ctx->include_count == 0) {
         include_ctx->include_patterns[include_ctx->include_count++] = ".";
     }
