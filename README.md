@@ -13,6 +13,7 @@
 * [X] Remove `--name` no longer useful
 * [X] Remove `--dir` no longer useful
 * [ ] Remove Herobrine
+* [ ] Add `--version`
 
 ## Building the Project
 
