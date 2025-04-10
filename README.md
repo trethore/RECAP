@@ -6,13 +6,13 @@
 
 ## TODO
 
-- [ ] Change `--paste` to check if an API key is provided in .env
-- [ ] Add `--out` output the generated text in a file
-- [ ] Add `--out-dir` output the generated text in a directory
-- [X] Add a warning to `--clear` since it removes all ctf-output files
-- [X] Remove `--name` no longer useful
-- [X] Remove `--dir` no longer useful
-- [ ] Remove Herobrine
+* [ ] Change `--paste` to check if an API key is provided in .env
+* [ ] Add `--out` output the generated text in a file
+* [ ] Add `--out-dir` output the generated text in a directory
+* [X] Add a warning to `--clear` since it removes all ctf-output files
+* [X] Remove `--name` no longer useful
+* [X] Remove `--dir` no longer useful
+* [ ] Remove Herobrine
 
 ## Building the Project
 
@@ -61,5 +61,3 @@ The project is compiled with the following flags:
 * `-g`: Include debugging information
 
 If you need to modify the compiler or flags, you can edit the variables at the top of the Makefile.
-
-
