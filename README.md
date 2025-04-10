@@ -6,7 +6,7 @@
 
 ## TODO
 
-* [ ] Change `--paste` to check if an API key is provided in .env
+* [ ] Change `--paste` to check if an API key is provided in environment
 * [ ] Add `--out` output the generated text in a file
 * [ ] Add `--out-dir` output the generated text in a directory
 * [X] Add a warning to `--clear` since it removes all ctf-output files
