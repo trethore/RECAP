@@ -1,4 +1,5 @@
 // parse args
+#define _POSIX_C_SOURCE 200809L
 #include "recap.h"
 #include <curl/curl.h>
 #include <stdio.h>
@@ -100,7 +101,7 @@ void print_help() {
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
     printf("  --clear [DIR]         Remove previous recap-output files (optionally from DIR)\n");
-    printf("  --content, -c [exts]  Include content of files with given extensions (comma separated)\n");
+    printf("  --content, -c [exts]  Include content of files with given extensions\n");
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
     printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
     printf("  --git, -g             Use .gitignore for exclusions\n");
@@ -124,72 +125,95 @@ void parse_arguments(int argc, char* argv[],
 
     static struct option long_options[] = {
         {"help",       no_argument,       0, 'h'},
-        {"clear",      optional_argument, 0, 'C'}, // Changed to optional_argument
+        {"clear",      optional_argument, 0, 'C'},
         {"content",    required_argument, 0, 'c'},
         {"include",    required_argument, 0, 'i'},
         {"exclude",    required_argument, 0, 'e'},
         {"git",        no_argument,       0, 'g'},
         {"paste",      required_argument, 0, 'p'},
+        // Add handling for these two:
         {"out",        required_argument, 0, 'o'},
         {"output-dir", required_argument, 0, 'O'},
         {0, 0, 0, 0}
     };
 
-    int opt;
-    int option_index = 0;
+    int opt, option_index = 0;
     while ((opt = getopt_long(argc, argv, "hC::c:i:e:gp:o:O:", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'h':
             print_help();
             exit(0);
-            break;
+
         case 'C':
             clear_recap_output_files(optarg);
             exit(0);
-            break;
+
         case 'c': {
             content_context->content_flag = 1;
+
             char* arg_copy = strdup(optarg);
             if (!arg_copy) {
                 fprintf(stderr, "Memory allocation error\n");
                 exit(1);
             }
-            char* token = strtok(arg_copy, ",");
+            char* save_ptr = NULL;
+            char* token = strtok_r(arg_copy, ",", &save_ptr);
             while (token != NULL) {
                 if (content_context->content_specifier_count < MAX_CONTENT_SPECIFIERS) {
-                    content_context->content_specifiers[content_context->content_specifier_count++] = token;
+                    content_context->content_specifiers[content_context->content_specifier_count++] = strdup(token);
                 }
                 else {
-                    fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
+                    fprintf(stderr, "Too many content specifiers. Max allowed is %d\n",
+                        MAX_CONTENT_SPECIFIERS);
                     free(arg_copy);
                     exit(1);
                 }
-                token = strtok(NULL, ",");
+                token = strtok_r(NULL, ",", &save_ptr);
             }
+            free(arg_copy);
             break;
         }
+
         case 'i':
-            if (include_ctx->include_count < MAX_PATTERNS)
+            if (include_ctx->include_count < MAX_PATTERNS) {
                 include_ctx->include_patterns[include_ctx->include_count++] = optarg;
+            }
             else {
                 fprintf(stderr, "Too many include patterns specified. Max allowed is %d\n", MAX_PATTERNS);
                 exit(1);
             }
             break;
+
         case 'e':
-            if (exclude_ctx->exclude_count < MAX_PATTERNS)
+            if (exclude_ctx->exclude_count < MAX_PATTERNS) {
                 exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = optarg;
+            }
             else {
                 fprintf(stderr, "Too many exclude patterns specified. Max allowed is %d\n", MAX_PATTERNS);
                 exit(1);
             }
             break;
+
         case 'g':
             load_gitignore(exclude_ctx);
             break;
+
         case 'p':
             *gist_api_key = optarg;
             break;
+
+            // Properly handle -o / --out
+        case 'o':
+            strncpy(output_context->output_name, optarg, MAX_PATH_SIZE - 1);
+            output_context->output_name[MAX_PATH_SIZE - 1] = '\0';
+            break;
+
+            // Properly handle -O / --output-dir
+        case 'O':
+            strncpy(output_context->output_dir, optarg, MAX_PATH_SIZE - 1);
+            output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
+            break;
+
         case '?':
         default:
             print_help();
@@ -197,6 +221,8 @@ void parse_arguments(int argc, char* argv[],
         }
     }
 
-    if (include_ctx->include_count == 0)
+    // If no -i was given, default to '.'
+    if (include_ctx->include_count == 0) {
         include_ctx->include_patterns[include_ctx->include_count++] = ".";
+    }
 }

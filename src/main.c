@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include "recap.h"
 #include <curl/curl.h>
 #include <sys/stat.h>
@@ -98,7 +99,9 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "No files or directories processed (maybe all were excluded or includes were invalid?). Output file not generated.\n");
         remove(filename);
     }
-
+    for (int i = 0; i < content_context.content_specifier_count; i++) {
+        free(content_context.content_specifiers[i]);
+    }
     free(filename);
     curl_global_cleanup();
     return 0;

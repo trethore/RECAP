@@ -1,5 +1,5 @@
 // this file add some useful functions for traversing directories and files
-
+#define _POSIX_C_SOURCE 200809L
 #include "recap.h"
 #include <limits.h>
 #include <stdlib.h>

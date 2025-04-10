@@ -1,5 +1,5 @@
-#ifndef CTF_H
-#define CTF_H
+#ifndef RECAP_H
+#define RECAP_H
 
 #include <stdio.h>
 #include <stdlib.h>
