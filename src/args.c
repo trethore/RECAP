@@ -102,7 +102,7 @@ void print_help() {
     printf("Usage: recap [options]\n");
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
-    printf("  --clear, -C [DIR]         Remove previous recap-output files (optionally from DIR)\n");
+    printf("  --clear, -C [DIR]     Remove previous recap-output files (optionally from DIR)\n");
     printf("  --content, -c [exts]  Include content of files with given extensions\n");
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
     printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
