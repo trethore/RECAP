@@ -1,15 +1,17 @@
-// parse args
 #define _POSIX_C_SOURCE 200809L
 #include "recap.h"
 #include <curl/curl.h>
+#include <unistd.h> 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <ctype.h>
 #include <getopt.h>
-#include <unistd.h> 
 #include <limits.h>
+
+// ptn de warning de merde, WSL warning pls dont put too much brain power into this next line
+char* realpath(const char* restrict path, char* restrict resolved_path);
 
 void clear_recap_output_files(const char* target_dir) {
     char full_path[MAX_PATH_SIZE];
