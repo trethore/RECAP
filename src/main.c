@@ -2,125 +2,140 @@
 #include "recap.h"
 #include <curl/curl.h>
 #include <sys/stat.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-FILE* output = NULL;
-char* gist_api_key = NULL;
 const char* RECAP_VERSION = "1.0.0";
 
 int main(int argc, char* argv[]) {
-    include_patterns_ctx include_ctx = { 0 };
-    exclude_patterns_ctx exclude_ctx = { 0 };
-    output_ctx output_context = { 0 };
-    content_ctx content_context = { 0 };
-    curl_global_init(CURL_GLOBAL_ALL);
+    recap_context ctx = { 0 };
+    ctx.version = RECAP_VERSION;
+    ctx.output_stream = NULL;
 
-    parse_arguments(argc, argv, &include_ctx, &exclude_ctx, &output_context, &content_context, &gist_api_key, RECAP_VERSION);
+    int result = 0;
+    char* allocated_output_filename = NULL;
 
-    char* filename = NULL;
-    int use_stdout = 0;
-    if (output_context.output_name[0] == '\0' && output_context.output_dir[0] == '\0') {
-        // Neither --output nor --output-dir specified: use stdout
-        output = stdout;
-        use_stdout = 1;
+    if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
+        fprintf(stderr, "Error: Failed to initialize libcurl.\n");
+        return 1;
+    }
+
+    parse_arguments(argc, argv, &ctx);
+
+
+    if (ctx.output.output_name[0] == '\0' && ctx.output.output_dir[0] == '\0') {
+        ctx.output.use_stdout = 1;
+        ctx.output_stream = stdout;
+        ctx.output.relative_output_path[0] = '\0';
     }
     else {
-        filename = get_output_filename(output, &output_context);
-        if (!filename) {
-            fprintf(stderr, "Failed to generate output filename.\n");
-            curl_global_cleanup();
-            return 1;
+        ctx.output.use_stdout = 0;
+        if (generate_output_filename(&ctx.output) != 0) {
+            result = 1;
+            goto cleanup;
         }
-        output = fopen(filename, "w");
-        if (!output) {
+
+
+        ctx.output_stream = fopen(ctx.output.calculated_output_path, "w");
+        if (!ctx.output_stream) {
             perror("fopen output file");
-            free(filename);
-            curl_global_cleanup();
-            return 1;
+            fprintf(stderr, "Error: Could not open output file: %s\n", ctx.output.calculated_output_path);
+            result = 1;
+            goto cleanup;
         }
+
+        allocated_output_filename = ctx.output.calculated_output_path;
     }
 
-    int traversed_something = 0;
-    for (int i = 0; i < include_ctx.include_count; i++) {
-        char current_path_normalized[MAX_PATH_SIZE];
-        strncpy(current_path_normalized, include_ctx.include_patterns[i], MAX_PATH_SIZE - 1);
-        current_path_normalized[MAX_PATH_SIZE - 1] = '\0';
-        normalize_path(current_path_normalized);
 
-        char rel_path[MAX_PATH_SIZE];
-        get_relative_path(current_path_normalized, rel_path, sizeof(rel_path));
 
-        if (is_excluded(output, rel_path, &exclude_ctx, &output_context)) {
-            if (strcmp(rel_path, ".") == 0) {
-                fprintf(stderr, "Warning: Root include path '.' is excluded, no files will be processed unless other includes are specified.\n");
+    int processed_something = 0;
+    for (int i = 0; i < ctx.includes.include_count; i++) {
+        start_traversal(ctx.includes.include_patterns[i], &ctx);
+    }
+
+    if (ctx.output_stream) {
+        fflush(ctx.output_stream);
+    }
+
+    if (!ctx.output.use_stdout && ctx.output_stream) {
+        long output_size = ftell(ctx.output_stream);
+        if (output_size > 0) {
+            processed_something = 1;
+        }
+        else if (output_size == 0) {
+            processed_something = 0;
+            fprintf(stderr, "No content written to output file (all includes might have been excluded or empty).\n");
+        }
+        else {
+            perror("ftell output file");
+            processed_something = 0;
+        }
+    }
+    else if (ctx.output.use_stdout) {
+        if (ctx.includes.include_count > 0) processed_something = 1;
+    }
+
+
+    if (!ctx.output.use_stdout && ctx.output_stream) {
+        fclose(ctx.output_stream);
+        ctx.output_stream = NULL;
+    }
+
+    if (processed_something) {
+        if (ctx.gist_api_key != NULL) {
+            if (!ctx.gist_api_key || ctx.gist_api_key[0] == '\0') {
+                fprintf(stderr, "Error: Gist upload requested (--paste), but no API key provided via argument or GITHUB_API_KEY environment variable.\n");
+                fprintf(stderr, "Output saved locally to %s\n", allocated_output_filename);
+                result = 1;
             }
-            continue;
-        }
-
-        struct stat st;
-        if (stat(current_path_normalized, &st) != 0) {
-            perror("stat include path");
-            fprintf(stderr, "Warning: Could not stat include path: %s. Skipping.\n", include_ctx.include_patterns[i]);
-            continue;
-        }
-
-        int depth = print_path_hierarchy(current_path_normalized, output);
-
-        if (S_ISDIR(st.st_mode)) {
-            traverse_directory(current_path_normalized, depth, output, &exclude_ctx, &output_context, &content_context);
-            traversed_something = 1;
-        }
-        else if (S_ISREG(st.st_mode)) {
-            const char* filename_part = strrchr(current_path_normalized, '/');
-            filename_part = filename_part ? filename_part + 1 : current_path_normalized;
-
-            print_indent(depth, output);
-            if (should_show_content(filename_part, current_path_normalized, &content_context)) {
-                fprintf(output, "%s:\n", filename_part);
-                write_file_content_inline(current_path_normalized, depth + 1, output, &content_context);
+            else if (ctx.output.use_stdout) {
+                fprintf(stderr, "Warning: Cannot upload to Gist when outputting to stdout. Output was printed above.\n");
             }
             else {
-                fprintf(output, "%s\n", filename_part);
-            }
-            traversed_something = 1;
-        }
-    }
+                printf("Uploading to Gist...\n");
+                char* gist_url = upload_to_gist(allocated_output_filename, ctx.gist_api_key);
 
-    if (!use_stdout && output) {
-        fclose(output);
-    }
-
-    if (traversed_something) {
-        if (gist_api_key) {
-            printf("Uploading to Gist...\n");
-            char* gist_url = upload_to_gist(filename, gist_api_key);
-            if (gist_url && strlen(gist_url) > 0) {
-                printf("Output uploaded to: %s\n", gist_url);
-                free(gist_url);
-                if (!use_stdout && filename) {
-                    remove(filename);
+                if (gist_url) {
+                    printf("Output uploaded to: %s\n", gist_url);
+                    free(gist_url);
+                    if (remove(allocated_output_filename) != 0) {
+                        perror("remove local output file after Gist upload");
+                        fprintf(stderr, "Warning: Failed to remove local file %s after Gist upload.\n", allocated_output_filename);
+                    }
+                    allocated_output_filename = NULL;
                 }
-            }
-            else {
-                if (gist_url) free(gist_url);
-                fprintf(stderr, "Failed to upload to Gist or get URL. Output saved locally to %s\n", filename);
+                else {
+                    fprintf(stderr, "Failed to upload to Gist. Output saved locally to %s\n", allocated_output_filename);
+                    result = 1;
+                }
             }
         }
         else {
-            if (!use_stdout) {
-                printf("Output written to %s\n", filename);
+            if (!ctx.output.use_stdout) {
+                printf("Output written to %s\n", allocated_output_filename);
             }
         }
     }
     else {
-        fprintf(stderr, "No files or directories processed (maybe all were excluded or includes were invalid?). Output file not generated.\n");
-        remove(filename);
+        if (!ctx.output.use_stdout && allocated_output_filename) {
+            fprintf(stderr, "No files processed or written. Removing empty output file: %s\n", allocated_output_filename);
+            remove(allocated_output_filename);
+            allocated_output_filename = NULL;
+        }
+        else if (ctx.output.use_stdout) {
+            fprintf(stderr, "No files processed or written to stdout.\n");
+        }
     }
-    for (int i = 0; i < content_context.content_specifier_count; i++) {
-        free(content_context.content_specifiers[i]);
+
+
+cleanup:
+    if (!ctx.output.use_stdout && ctx.output_stream) {
+        fclose(ctx.output_stream);
+        ctx.output_stream = NULL;
     }
-    if (!use_stdout && filename) {
-        free(filename);
-    }
+    free_content_specifiers(&ctx.content);
     curl_global_cleanup();
-    return 0;
+    return result;
 }

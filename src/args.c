@@ -1,75 +1,126 @@
 #define _POSIX_C_SOURCE 200809L
 #include "recap.h"
-#include <curl/curl.h>
-#include <unistd.h> 
+#include <curl/curl.h> 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <dirent.h>
 #include <ctype.h>
 #include <getopt.h>
-#include <limits.h>
+#include <limits.h> 
 
 
-static void add_content_specifiers(const char* arg, content_ctx* ctx) {
+static int add_single_content_specifier(const char* token, content_ctx* ctx) {
+    if (ctx->content_specifier_count >= MAX_CONTENT_SPECIFIERS) {
+        fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
+        return -1;
+    }
+    char* token_dup = strdup(token);
+    if (!token_dup) {
+        perror("strdup content specifier");
+        return -1;
+    }
+    ctx->content_specifiers[ctx->content_specifier_count++] = token_dup;
+    return 0;
+}
+
+
+static int add_content_specifiers(const char* arg, content_ctx* ctx) {
     char* arg_copy = strdup(arg);
     if (!arg_copy) {
-        fprintf(stderr, "Memory allocation error\n");
-        exit(1);
+        perror("strdup for content specifier parsing");
+        return -1;
     }
     char* save_ptr = NULL;
     char* token = strtok_r(arg_copy, ",", &save_ptr);
+    int result = 0;
     while (token != NULL) {
-        if (ctx->content_specifier_count < MAX_CONTENT_SPECIFIERS) {
-            ctx->content_specifiers[ctx->content_specifier_count++] = strdup(token);
-        }
-        else {
-            fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
-            free(arg_copy);
-            exit(1);
+        if (add_single_content_specifier(token, ctx) != 0) {
+            result = -1;
+            break;
         }
         token = strtok_r(NULL, ",", &save_ptr);
     }
     free(arg_copy);
+    return result;
 }
 
-// ptn de warning de merde, WSL warning pls dont put too much brain power into this next line
-char* realpath(const char* restrict path, char* restrict resolved_path);
+
+void free_content_specifiers(content_ctx* content_context) {
+    for (int i = 0; i < content_context->content_specifier_count; i++) {
+        free((void*)content_context->content_specifiers[i]);
+        content_context->content_specifiers[i] = NULL;
+    }
+    content_context->content_specifier_count = 0;
+}
+
+
 
 void clear_recap_output_files(const char* target_dir) {
     char full_path[MAX_PATH_SIZE];
+    const char* dir_to_open = target_dir;
+
     if (!target_dir || strlen(target_dir) == 0) {
-        target_dir = ".";
+        dir_to_open = ".";
     }
 
-    if (realpath(target_dir, full_path) == NULL) {
-        strncpy(full_path, target_dir, MAX_PATH_SIZE - 1);
+    if (realpath(dir_to_open, full_path) == NULL) {
+        strncpy(full_path, dir_to_open, MAX_PATH_SIZE - 1);
         full_path[MAX_PATH_SIZE - 1] = '\0';
+        if (strcmp(full_path, ".") != 0 && strcmp(full_path, "..") != 0) {
+            normalize_path(full_path);
+        }
     }
 
 
     printf("Warning: This will delete every file matching 'recap-output*' in '%s'.\n", full_path);
     printf("Are you sure? (y/N): ");
-    char confirmation;
-    if (scanf(" %c", &confirmation) != 1 || tolower(confirmation) != 'y') {
+    int confirmation_char = getchar();
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+
+    if (tolower(confirmation_char) != 'y') {
         printf("Operation cancelled.\n");
         return;
     }
 
-    DIR* dir = opendir(target_dir);
+
+    DIR* dir = opendir(dir_to_open);
     if (!dir) {
         perror("opendir for clearing");
-        fprintf(stderr, "Failed to open directory: %s\n", target_dir);
+        fprintf(stderr, "Failed to open directory: %s\n", dir_to_open);
         return;
     }
 
     struct dirent* entry;
     int deleted_count = 0;
     char file_to_remove[MAX_PATH_SIZE];
+    const char* pattern = "recap-output";
+    size_t pattern_len = strlen(pattern);
 
     while ((entry = readdir(dir)) != NULL) {
-        if (strncmp(entry->d_name, "recap-output", strlen("recap-output")) == 0) {
-            snprintf(file_to_remove, sizeof(file_to_remove), "%s/%s", target_dir, entry->d_name);
+        if (strncmp(entry->d_name, pattern, pattern_len) == 0) {
+            int path_len = snprintf(file_to_remove, sizeof(file_to_remove), "%s/%s", dir_to_open, entry->d_name);
+            if (path_len < 0 || (size_t)path_len >= sizeof(file_to_remove)) {
+                fprintf(stderr, "Warning: Path too long, skipping file: %s/%s\n", dir_to_open, entry->d_name);
+                continue;
+            }
+
+            // Optional: Add a stat check to ensure it's a file before removing
+            struct stat st;
+            if (stat(file_to_remove, &st) == 0) {
+                if (!S_ISREG(st.st_mode)) {
+                    continue;
+                }
+            }
+            else {
+                perror("stat before remove");
+                fprintf(stderr, "Warning: Could not stat file, skipping: %s\n", file_to_remove);
+                continue;
+            }
+
+
             if (remove(file_to_remove) == 0) {
                 printf("Deleted: %s\n", file_to_remove);
                 deleted_count++;
@@ -89,105 +140,147 @@ void clear_recap_output_files(const char* target_dir) {
     }
 }
 
-void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_filename) {
+
+void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_filename_arg) {
     char cwd[MAX_PATH_SIZE];
     if (!getcwd(cwd, sizeof(cwd))) {
-        perror("getcwd");
+        perror("getcwd in load_gitignore");
         return;
     }
 
     char search_path[MAX_PATH_SIZE];
-    const char* filename = gitignore_filename && strlen(gitignore_filename) > 0 ? gitignore_filename : ".gitignore";
+    const char* filename_to_find = (gitignore_filename_arg && strlen(gitignore_filename_arg) > 0)
+        ? gitignore_filename_arg : ".gitignore";
     int found = 0;
 
-    char* dir = strdup(cwd);
-    while (dir && strlen(dir) > 0) {
-        snprintf(search_path, sizeof(search_path), "%s/%s", dir, filename);
+    char* current_dir = strdup(cwd);
+    if (!current_dir) {
+        perror("strdup in load_gitignore");
+        return;
+    }
+
+    while (current_dir && strlen(current_dir) > 0 && strcmp(current_dir, "/") != 0) {
+        int path_len = snprintf(search_path, sizeof(search_path), "%s/%s", current_dir, filename_to_find);
+        if (path_len < 0 || (size_t)path_len >= sizeof(search_path)) {
+            fprintf(stderr, "Warning: Path too long while searching for gitignore: %s/%s\n", current_dir, filename_to_find);
+            break;
+        }
+
         FILE* git_ignore_file = fopen(search_path, "r");
         if (git_ignore_file) {
+            // printf("Loading exclude patterns from: %s\n", search_path);
             found = 1;
-            int gitignore_idx = 0;
             char line[MAX_PATH_SIZE];
             while (fgets(line, sizeof(line), git_ignore_file)) {
                 line[strcspn(line, "\r\n")] = 0;
+
                 char* trimmed_line = line;
-                while (isspace((unsigned char)*trimmed_line))
+                while (isspace((unsigned char)*trimmed_line)) {
                     trimmed_line++;
+                }
                 if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
                     continue;
                 }
-                if (exclude_ctx->exclude_count < MAX_PATTERNS && gitignore_idx < MAX_GITIGNORE_ENTRIES) {
-                    strncpy(exclude_ctx->gitignore_entries[gitignore_idx], trimmed_line, MAX_PATH_SIZE - 1);
-                    exclude_ctx->gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
-                    exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = exclude_ctx->gitignore_entries[gitignore_idx];
-                    gitignore_idx++;
+
+                char* end = trimmed_line + strlen(trimmed_line) - 1;
+                while (end > trimmed_line && isspace((unsigned char)*end)) {
+                    end--;
+                }
+                *(end + 1) = '\0';
+
+
+                if (exclude_ctx->exclude_count < MAX_PATTERNS && exclude_ctx->gitignore_entry_count < MAX_GITIGNORE_ENTRIES) {
+                    strncpy(exclude_ctx->gitignore_entries[exclude_ctx->gitignore_entry_count], trimmed_line, MAX_PATH_SIZE - 1);
+                    exclude_ctx->gitignore_entries[exclude_ctx->gitignore_entry_count][MAX_PATH_SIZE - 1] = '\0';
+
+                    exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] =
+                        exclude_ctx->gitignore_entries[exclude_ctx->gitignore_entry_count];
+
+                    exclude_ctx->gitignore_entry_count++;
                 }
                 else {
                     if (exclude_ctx->exclude_count >= MAX_PATTERNS) {
-                        fprintf(stderr, "Warning: Maximum number of exclude patterns (%d) reached while reading %s.\n", MAX_PATTERNS, filename);
+                        fprintf(stderr, "Warning: Maximum number of exclude patterns (%d) reached while reading %s.\n", MAX_PATTERNS, search_path);
                     }
-                    break;
+                    else {
+                        fprintf(stderr, "Warning: Maximum number of gitignore storage slots (%d) reached while reading %s.\n", MAX_GITIGNORE_ENTRIES, search_path);
+                    }
+                    fclose(git_ignore_file);
+                    goto cleanup_and_exit;
                 }
             }
             fclose(git_ignore_file);
             break;
         }
-        char* last_slash = strrchr(dir, '/');
-        if (last_slash && last_slash != dir) {
-            *last_slash = '\0';
+
+        char* last_slash = strrchr(current_dir, '/');
+        if (last_slash == current_dir) {
+            if (strlen(current_dir) > 1) {
+                current_dir[1] = '\0';
+            }
+            else {
+                break;
+            }
         }
-        else if (last_slash && last_slash == dir) {
-            dir[1] = '\0';
+        else if (last_slash) {
+            *last_slash = '\0';
         }
         else {
             break;
         }
     }
-    free(dir);
-    if (!found) {
-        fprintf(stderr, "No %s found in current or parent directories.\n", filename);
+
+cleanup_and_exit:
+    free(current_dir);
+    if (!found && gitignore_filename_arg) {
+        fprintf(stderr, "Warning: Specified gitignore file '%s' not found in current or parent directories.\n", filename_to_find);
+    }
+    else if (!found && !gitignore_filename_arg) {
+        printf("Info: No default .gitignore found in current or parent directories.\n");
     }
 }
 
-void print_help() {
-    printf("Usage: recap [options] <include-path>\n");
+
+void print_help(const char* version) {
+    printf("Usage: recap [options] [include-path...]\n");
     printf("Options:\n");
-    printf("  --help, -h            Show this help message and exit\n");
-    printf("  --version, -v         Show version information and exit\n");
-    printf("  --clear, -C [DIR]     Remove previous recap-output files (optionally from DIR)\n");
-    printf("  --content, -c [exts]  Include content of files with given extensions\n");
-    printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
-    printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
-    printf("  --git, -g [FILE]      Use .gitignore (or custom FILE) for exclusions; searches parent directories recursively\n");
-    printf("  --paste, -p [API_KEY] Upload output as GitHub Gist (API key optional, can also use GITHUB_API_KEY env variable)\n");
-    printf("  --output, -o FILE     Write the generated text to the specified file\n");
-    printf("  --out-dir, -O DIR     Write the generated text to a timestamped file within the specified directory\n");
-    printf("\n");
-    printf("The <include-path> positional argument is required unless -i is used. You may specify the include path either as a positional argument or with -i.\n");
+    printf(
+        "-h, --help                Show this help message and exit\n"
+        "-v, --version             Show version information (%s) and exit\n"
+        "-C, --clear [DIR]         Clear recap-output files in the specified optional directory (default: current directory)\n"
+        "-c, --content [SPEC,...]  Specify content specifiers to include in the output\n"
+        "-i, --include PATH        Include files or directories matching the or multiple specified path(s)\n"
+        "-e, --exclude PATTERN     Exclude files or directories matching the specified pattern(s)\n"
+        "-g, --git [FILE]          Load exclude patterns from a .gitignore file (default: .gitignore)\n"
+        "-p, --paste [KEY]         Upload output to a gist using the specified GitHub API key (or GITHUB_API_KEY env var)\n"
+        "-o, --output FILE         Specify the output file name (default: recap-output.txt)\n"
+        "-O, --output-dir DIR      Specify the output directory (default: current directory)\n"
+        "\n"
+        , version);
     printf("\nExamples:\n");
-    printf("  ./recap src\n");
-    printf("  ./recap -i src\n");
-    printf("  ./recap --output out.txt src\n");
-    printf("  ./recap --version\n");
-    printf("  ./recap --output somedir/out.txt\n");
-    printf("  ./recap --out-dir .\n");
-    printf("  ./recap --out-dir somedir/\n");
-    printf("  ./recap -i src -e build -c c,h\n");
+    printf("  recap src/                   # Process 'src' directory\n");
 }
 
 
-void parse_arguments(int argc, char* argv[],
-    include_patterns_ctx* include_ctx,
-    exclude_patterns_ctx* exclude_ctx,
-    output_ctx* output_context,
-    content_ctx* content_context,
-    char** gist_api_key,
-    const char* version) {
-    include_ctx->include_count = 0;
-    exclude_ctx->exclude_count = 0;
-    content_context->content_specifier_count = 0;
-    content_context->content_flag = 0;
-    *gist_api_key = NULL;
+void parse_arguments(int argc, char* argv[], recap_context* ctx) {
+    ctx->includes.include_count = 0;
+    ctx->excludes.exclude_count = 0;
+    ctx->excludes.gitignore_entry_count = 0;
+    ctx->content.content_specifier_count = 0;
+    ctx->content.content_flag = 0;
+    ctx->gist_api_key = NULL;
+    ctx->output.output_name[0] = '\0';
+    ctx->output.output_dir[0] = '\0';
+    ctx->output.calculated_output_path[0] = '\0';
+    ctx->output.relative_output_path[0] = '\0';
+    ctx->output.use_stdout = 0;
+
+    static const char* default_excludes[] = { ".git/" };
+    int num_default_excludes = sizeof(default_excludes) / sizeof(default_excludes[0]);
+    for (int i = 0; i < num_default_excludes && ctx->excludes.exclude_count < MAX_PATTERNS; ++i) {
+        ctx->excludes.exclude_patterns[ctx->excludes.exclude_count++] = default_excludes[i];
+    }
+
 
     static struct option long_options[] = {
         {"help",       no_argument,       0, 'h'},
@@ -203,52 +296,64 @@ void parse_arguments(int argc, char* argv[],
         {0, 0, 0, 0}
     };
 
-    int opt, option_index = 0;
-    while ((opt = getopt_long(argc, argv, "hC::c::i:e:g::p:o:O:v", long_options, &option_index)) != -1) {
+    int opt;
+    const char* short_opts = "hvC::c::i:e:g::p::o:O:";
+
+    while ((opt = getopt_long(argc, argv, short_opts, long_options, NULL)) != -1) {
         switch (opt) {
         case 'h':
-            print_help();
+            print_help(ctx->version);
+            exit(0);
+        case 'v':
+            printf("recap version %s\n", ctx->version);
             exit(0);
 
         case 'C':
-            if (!optarg && optind < argc && argv[optind][0] != '-') {
-                optarg = argv[optind++];
+        {
+            const char* clear_dir = optarg;
+            if (!clear_dir && optind < argc && argv[optind][0] != '-') {
+                clear_dir = argv[optind++];
             }
-
-            if (optarg) {
-                clear_recap_output_files(optarg);
-            }
-            else {
-                clear_recap_output_files(".");
-            }
+            clear_recap_output_files(clear_dir ? clear_dir : ".");
             exit(0);
+        }
+
 
         case 'c': {
-            content_context->content_flag = 1;
+            ctx->content.content_flag = 1;
+            int parse_error = 0;
 
-            if (optarg) {
-                add_content_specifiers(optarg, content_context);
+            const char* spec = optarg;
+            if (!spec && optind < argc && argv[optind][0] != '-') {
+                spec = argv[optind++];
             }
-            while (optind < argc && argv[optind][0] != '-') {
-                add_content_specifiers(argv[optind], content_context);
-                optind++;
+
+            if (spec) {
+                if (add_content_specifiers(spec, &ctx->content) != 0) {
+                    parse_error = 1;
+                }
+            }
+
+            if (parse_error) {
+                exit(1);
             }
             break;
         }
 
+
         case 'i':
-            if (include_ctx->include_count < MAX_PATTERNS) {
-                include_ctx->include_patterns[include_ctx->include_count++] = optarg;
+            if (ctx->includes.include_count < MAX_PATTERNS) {
+                ctx->includes.include_patterns[ctx->includes.include_count++] = optarg;
             }
             else {
-                fprintf(stderr, "Too many include patterns specified. Max allowed is %d\n", MAX_PATTERNS);
+                fprintf(stderr, "Too many include paths specified. Max allowed is %d\n", MAX_PATTERNS);
                 exit(1);
             }
             break;
 
         case 'e':
-            if (exclude_ctx->exclude_count < MAX_PATTERNS) {
-                exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = optarg;
+            if (ctx->excludes.exclude_count < MAX_PATTERNS) {
+                ctx->excludes.exclude_patterns[ctx->excludes.exclude_count++] = optarg;
             }
             else {
                 fprintf(stderr, "Too many exclude patterns specified. Max allowed is %d\n", MAX_PATTERNS);
@@ -257,52 +362,83 @@ void parse_arguments(int argc, char* argv[],
             break;
 
         case 'g':
-            if (!optarg && optind < argc && argv[optind][0] != '-') {
-                optarg = argv[optind++];
+        {
+            const char* gitignore_file = optarg;
+            if (!gitignore_file && optind < argc && argv[optind][0] != '-') {
+                gitignore_file = argv[optind++];
             }
-            load_gitignore(exclude_ctx, optarg);
-            break;
+            load_gitignore(&ctx->excludes, gitignore_file);
+        }
+        break;
 
         case 'p':
             if (optarg) {
-                *gist_api_key = optarg;
+                ctx->gist_api_key = optarg;
             }
             else {
                 char* env_key = getenv("GITHUB_API_KEY");
                 if (env_key && strlen(env_key) > 0) {
-                    *gist_api_key = env_key;
+                    ctx->gist_api_key = env_key;
                 }
                 else {
-                    *gist_api_key = NULL;
+                    ctx->gist_api_key = "";
+                    fprintf(stderr, "Warning: --paste option used without API key argument and GITHUB_API_KEY env var not set.\n");
                 }
             }
             break;
 
+
         case 'o':
-            strncpy(output_context->output_name, optarg, MAX_PATH_SIZE - 1);
-            output_context->output_name[MAX_PATH_SIZE - 1] = '\0';
+            if (ctx->output.output_dir[0] != '\0') {
+                fprintf(stderr, "Error: Cannot use both --output (-o) and --output-dir (-O) simultaneously.\n");
+                exit(1);
+            }
+            strncpy(ctx->output.output_name, optarg, MAX_PATH_SIZE - 1);
+            ctx->output.output_name[MAX_PATH_SIZE - 1] = '\0';
             break;
 
         case 'O':
-            strncpy(output_context->output_dir, optarg, MAX_PATH_SIZE - 1);
-            output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
+            if (ctx->output.output_name[0] != '\0') {
+                fprintf(stderr, "Error: Cannot use both --output (-o) and --output-dir (-O) simultaneously.\n");
+                exit(1);
+            }
+            strncpy(ctx->output.output_dir, optarg, MAX_PATH_SIZE - 1);
+            ctx->output.output_dir[MAX_PATH_SIZE - 1] = '\0';
             break;
-        case 'v':
-            printf("recap version %s\n", version);
-            exit(0);
+
         case '?':
+            fprintf(stderr, "Try 'recap --help' for more information.\n");
+            exit(1);
         default:
-            print_help();
+            abort();
+        }
+    }
+
+    while (optind < argc) {
+        if (ctx->includes.include_count < MAX_PATTERNS) {
+            ctx->includes.include_patterns[ctx->includes.include_count++] = argv[optind++];
+        }
+        else {
+            fprintf(stderr, "Too many include paths specified (including positional). Max allowed is %d\n", MAX_PATTERNS);
             exit(1);
         }
     }
 
-    if (include_ctx->include_count == 0 && optind < argc) {
-        include_ctx->include_patterns[include_ctx->include_count++] = argv[optind++];
-    }
 
-    if (include_ctx->include_count == 0) {
-        fprintf(stderr, "No include path specified. Defaulting to current directory (\".\").\n");
-        include_ctx->include_patterns[include_ctx->include_count++] = ".";
+    if (ctx->includes.include_count == 0) {
+        int action_taken = 0;
+        for (int i = 1; i < argc; ++i) {
+            if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0 ||
+                strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0 ||
+                strcmp(argv[i], "-C") == 0 || strcmp(argv[i], "--clear") == 0) {
+                action_taken = 1;
+                break;
+            }
+        }
+        if (!action_taken) {
+            fprintf(stderr, "No include path specified. Defaulting to current directory (\".\").\n");
+            static char* default_include = ".";
+            ctx->includes.include_patterns[ctx->includes.include_count++] = default_include;
+        }
     }
 }
