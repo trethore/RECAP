@@ -20,7 +20,7 @@
 * [X] `--content` allow multiple options instead of custom quote separation logic (current logic is fine, but what if you want to target extensions containing quotes? it's a rabbit hole of escaping mechanisms. better let the shell handle it)
 * [X] add non-option argument for source directory(ies?): currently it's always `.`
 * [X] Allow custom .gitignore filename as `--git` option argument, or load it from parent directory recursively (until root) if not found. Also check if there's a library to interpret the full syntax (comment, !-lines...)
-
+  
 ## Building the Project
 
 ### Dependencies
@@ -68,3 +68,4 @@ The project is compiled with the following flags:
 * `-g`: Include debugging information
 
 If you need to modify the compiler or flags, you can edit the variables at the top of the Makefile.
+

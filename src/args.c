@@ -200,7 +200,7 @@ void parse_arguments(int argc, char* argv[],
         {"help",       no_argument,       0, 'h'},
         {"version",    no_argument,       0, 'v'},
         {"clear",      optional_argument, 0, 'C'},
-        {"content",    required_argument, 0, 'c'},
+        {"content",    optional_argument, 0, 'c'},
         {"include",    required_argument, 0, 'i'},
         {"exclude",    required_argument, 0, 'e'},
         {"git",        optional_argument, 0, 'g'},
@@ -211,7 +211,7 @@ void parse_arguments(int argc, char* argv[],
     };
 
     int opt, option_index = 0;
-    while ((opt = getopt_long(argc, argv, "hC::c:i:e:g::p:o:O:v", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hC::c::i:e:g::p:o:O:v", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'h':
             print_help();
@@ -233,9 +233,10 @@ void parse_arguments(int argc, char* argv[],
         case 'c': {
             content_context->content_flag = 1;
 
-            // Add specifiers from the initial optarg
-            add_content_specifiers(optarg, content_context);
-
+            // Add specifiers from the initial optarg, if present
+            if (optarg) {
+                add_content_specifiers(optarg, content_context);
+            }
             // Add subsequent non-flag arguments as additional specifiers
             while (optind < argc && argv[optind][0] != '-') {
                 add_content_specifiers(argv[optind], content_context);
