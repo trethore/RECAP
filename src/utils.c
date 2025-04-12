@@ -137,10 +137,38 @@ char* get_output_filename(FILE* output, output_ctx* output_context) {
     int required_len = 0;
 
     if (strlen(output_context->output_name) > 0) {
-
+        // --output: user wants to write to a specific file
         required_len = snprintf(filename, MAX_PATH_SIZE, "%s/%s", output_dir, output_context->output_name);
+        if (required_len < 0 || required_len >= MAX_PATH_SIZE) {
+            fprintf(stderr, "Error: Constructed output path is too long or encoding error.\n");
+            free(filename);
+            return NULL;
+        }
+        normalize_path(filename);
+
+        // Check if the path is a directory
+        struct stat st;
+        if (stat(filename, &st) == 0 && S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "Error: Output path '%s' is a directory. Please specify a file path for --output.\n", filename);
+            free(filename);
+            return NULL;
+        }
+        // Also handle the case where user tries --output . or --output ..
+        if (strcmp(filename, ".") == 0 || strcmp(filename, "..") == 0 || strcmp(filename, "/") == 0) {
+            fprintf(stderr, "Error: Output path '%s' is a directory. Please specify a file path for --output.\n", filename);
+            free(filename);
+            return NULL;
+        }
     }
     else {
+        // --out-dir: user wants to write to a timestamped file in a directory
+        // First, check that output_dir exists and is a directory
+        struct stat dir_st;
+        if (stat(output_dir, &dir_st) != 0 || !S_ISDIR(dir_st.st_mode)) {
+            fprintf(stderr, "Error: Output directory '%s' does not exist or is not a directory.\n", output_dir);
+            free(filename);
+            return NULL;
+        }
 
         time_t now = time(NULL);
         struct tm* t = localtime(&now);
@@ -151,20 +179,25 @@ char* get_output_filename(FILE* output, output_ctx* output_context) {
             return NULL;
         }
         required_len = snprintf(filename, MAX_PATH_SIZE, "%s/%s", output_dir, timestamp);
-    }
+        if (required_len < 0 || required_len >= MAX_PATH_SIZE) {
+            fprintf(stderr, "Error: Constructed output path is too long or encoding error.\n");
+            free(filename);
+            return NULL;
+        }
+        normalize_path(filename);
 
-    if (required_len < 0 || required_len >= MAX_PATH_SIZE) {
-        fprintf(stderr, "Error: Constructed output path is too long or encoding error.\n");
-        free(filename);
-        return NULL;
-    }
-
-    normalize_path(filename);
-
-    if (strcmp(filename, ".") == 0 || strcmp(filename, "/") == 0) {
-        fprintf(stderr, "Error: Invalid output filename generated: %s\n", filename);
-        free(filename);
-        return NULL;
+        // Check if the generated file path already exists as a directory
+        struct stat file_st;
+        if (stat(filename, &file_st) == 0 && S_ISDIR(file_st.st_mode)) {
+            fprintf(stderr, "Error: Generated output file path '%s' is a directory. Cannot write output.\n", filename);
+            free(filename);
+            return NULL;
+        }
+        if (strcmp(filename, ".") == 0 || strcmp(filename, "..") == 0 || strcmp(filename, "/") == 0) {
+            fprintf(stderr, "Error: Invalid output filename generated: %s\n", filename);
+            free(filename);
+            return NULL;
+        }
     }
 
     return filename;

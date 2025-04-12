@@ -142,7 +142,13 @@ void print_help() {
     printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
     printf("  --git, -g [FILE]      Use .gitignore (or custom FILE) for exclusions; searches parent directories recursively\n");
     printf("  --paste, -p [API_KEY] Upload output as GitHub Gist (API key optional, can also use GITHUB_API_KEY env variable)\n");
-    printf("\nExample:\n");
+    printf("  --output, -o FILE     Write the generated text to the specified file\n");
+    printf("  --out-dir, -O DIR     Write the generated text to a timestamped file within the specified directory\n");
+    printf("\nExamples:\n");
+    printf("  ./recap --output out.txt\n");
+    printf("  ./recap --output somedir/out.txt\n");
+    printf("  ./recap --out-dir .\n");
+    printf("  ./recap --out-dir somedir/\n");
     printf("  ./recap -i src -e build -c c h\n");
 }
 
