@@ -16,18 +16,27 @@ int main(int argc, char* argv[]) {
 
     parse_arguments(argc, argv, &include_ctx, &exclude_ctx, &output_context, &content_context, &gist_api_key, RECAP_VERSION);
 
-    char* filename = get_output_filename(output, &output_context);
-    if (!filename) {
-        fprintf(stderr, "Failed to generate output filename.\n");
-        curl_global_cleanup();
-        return 1;
+    char* filename = NULL;
+    int use_stdout = 0;
+    if (output_context.output_name[0] == '\0' && output_context.output_dir[0] == '\0') {
+        // Neither --output nor --output-dir specified: use stdout
+        output = stdout;
+        use_stdout = 1;
     }
-    output = fopen(filename, "w");
-    if (!output) {
-        perror("fopen output file");
-        free(filename);
-        curl_global_cleanup();
-        return 1;
+    else {
+        filename = get_output_filename(output, &output_context);
+        if (!filename) {
+            fprintf(stderr, "Failed to generate output filename.\n");
+            curl_global_cleanup();
+            return 1;
+        }
+        output = fopen(filename, "w");
+        if (!output) {
+            perror("fopen output file");
+            free(filename);
+            curl_global_cleanup();
+            return 1;
+        }
     }
 
     int traversed_something = 0;
@@ -76,7 +85,9 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    fclose(output);
+    if (!use_stdout && output) {
+        fclose(output);
+    }
 
     if (traversed_something) {
         if (gist_api_key) {
@@ -85,7 +96,9 @@ int main(int argc, char* argv[]) {
             if (gist_url && strlen(gist_url) > 0) {
                 printf("Output uploaded to: %s\n", gist_url);
                 free(gist_url);
-                remove(filename);
+                if (!use_stdout && filename) {
+                    remove(filename);
+                }
             }
             else {
                 if (gist_url) free(gist_url);
@@ -93,7 +106,9 @@ int main(int argc, char* argv[]) {
             }
         }
         else {
-            printf("Output written to %s\n", filename);
+            if (!use_stdout) {
+                printf("Output written to %s\n", filename);
+            }
         }
     }
     else {
@@ -103,7 +118,9 @@ int main(int argc, char* argv[]) {
     for (int i = 0; i < content_context.content_specifier_count; i++) {
         free(content_context.content_specifiers[i]);
     }
-    free(filename);
+    if (!use_stdout && filename) {
+        free(filename);
+    }
     curl_global_cleanup();
     return 0;
 }
