@@ -6,8 +6,8 @@
 
 ## TODO
 
-* [ ] Change `--paste` to check if an API key is provided in environment
-* [ ] Add `--out` output the generated text in a file
+* [X] Change `--paste` to check if an API key is provided in environment
+* [ ] Add `--output` output the generated text in a file
 * [ ] Add `--out-dir` output the generated text in a directory
 * [X] Add a warning to `--clear` since it removes all ctf-output files
 * [X] Remove `--name` no longer useful
@@ -19,8 +19,7 @@
 
 * [ ] `--content` allow multiple options instead of custom quote separation logic (current logic is fine, but what if you want to target extensions containing quotes? it's a rabbit hole of escaping mechanisms. better let the shell handle it)
 * [ ] add non-option argument for source directory(ies?): currently it's always `.`
-* [x] Rename `--out` to `--output` for consistency with `--output-dir`
-* [ ] Allow custom .gitignore filename as `--git` option argument, or load it from parent directory recursively (until root) if not found. Also check if there's a library to interpret the full syntax (comment, !-lines...)
+* [X] Allow custom .gitignore filename as `--git` option argument, or load it from parent directory recursively (until root) if not found. Also check if there's a library to interpret the full syntax (comment, !-lines...)
 
 ## Building the Project
 

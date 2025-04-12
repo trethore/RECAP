@@ -66,36 +66,70 @@ void clear_recap_output_files(const char* target_dir) {
     }
 }
 
-void load_gitignore(exclude_patterns_ctx* exclude_ctx) {
-    FILE* git_ignore_file = fopen(".gitignore", "r");
-    if (!git_ignore_file) {
+void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_filename) {
+    // Recursively search for the gitignore file up to root
+    char cwd[MAX_PATH_SIZE];
+    if (!getcwd(cwd, sizeof(cwd))) {
+        perror("getcwd");
         return;
     }
-    int gitignore_idx = 0;
-    char line[MAX_PATH_SIZE];
-    while (fgets(line, sizeof(line), git_ignore_file)) {
-        line[strcspn(line, "\r\n")] = 0;
-        char* trimmed_line = line;
-        while (isspace((unsigned char)*trimmed_line))
-            trimmed_line++;
-        if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
-            continue;
+
+    char search_path[MAX_PATH_SIZE];
+    const char* filename = gitignore_filename && strlen(gitignore_filename) > 0 ? gitignore_filename : ".gitignore";
+    int found = 0;
+
+    // Start from cwd, go up to root
+    char* dir = strdup(cwd);
+    while (dir && strlen(dir) > 0) {
+        snprintf(search_path, sizeof(search_path), "%s/%s", dir, filename);
+        FILE* git_ignore_file = fopen(search_path, "r");
+        if (git_ignore_file) {
+            found = 1;
+            int gitignore_idx = 0;
+            char line[MAX_PATH_SIZE];
+            while (fgets(line, sizeof(line), git_ignore_file)) {
+                line[strcspn(line, "\r\n")] = 0;
+                char* trimmed_line = line;
+                while (isspace((unsigned char)*trimmed_line))
+                    trimmed_line++;
+                if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
+                    continue;
+                }
+                // Support negation patterns (!), comments, blank lines
+                if (exclude_ctx->exclude_count < MAX_PATTERNS && gitignore_idx < MAX_GITIGNORE_ENTRIES) {
+                    strncpy(exclude_ctx->gitignore_entries[gitignore_idx], trimmed_line, MAX_PATH_SIZE - 1);
+                    exclude_ctx->gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
+                    exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = exclude_ctx->gitignore_entries[gitignore_idx];
+                    gitignore_idx++;
+                }
+                else {
+                    if (exclude_ctx->exclude_count >= MAX_PATTERNS) {
+                        fprintf(stderr, "Warning: Maximum number of exclude patterns (%d) reached while reading %s.\n", MAX_PATTERNS, filename);
+                    }
+                    break;
+                }
+            }
+            fclose(git_ignore_file);
+            break; // Only load the first found .gitignore up the tree
         }
-        // f this
-        if (exclude_ctx->exclude_count < MAX_PATTERNS && gitignore_idx < MAX_GITIGNORE_ENTRIES) {
-            strncpy(exclude_ctx->gitignore_entries[gitignore_idx], trimmed_line, MAX_PATH_SIZE - 1);
-            exclude_ctx->gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
-            exclude_ctx->exclude_patterns[exclude_ctx->exclude_count++] = exclude_ctx->gitignore_entries[gitignore_idx];
-            gitignore_idx++;
+        // Move up one directory
+        char* last_slash = strrchr(dir, '/');
+        if (last_slash && last_slash != dir) {
+            *last_slash = '\0';
+        }
+        else if (last_slash && last_slash == dir) {
+            // At root "/"
+            dir[1] = '\0';
         }
         else {
-            if (exclude_ctx->exclude_count >= MAX_PATTERNS) {
-                fprintf(stderr, "Warning: Maximum number of exclude patterns (%d) reached while reading .gitignore.\n", MAX_PATTERNS);
-            }
             break;
         }
     }
-    fclose(git_ignore_file);
+    free(dir);
+    if (!found) {
+        // No .gitignore found
+        // fprintf(stderr, "No %s found in current or parent directories.\n", filename);
+    }
 }
 
 void print_help() {
@@ -106,8 +140,8 @@ void print_help() {
     printf("  --content, -c [exts]  Include content of files with given extensions\n");
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
     printf("  --exclude, -e PATH    Exclude specific file or directory (repeatable)\n");
-    printf("  --git, -g             Use .gitignore for exclusions\n");
-    printf("  --paste, -p API_KEY   Upload output as GitHub Gist\n");
+    printf("  --git, -g [FILE]      Use .gitignore (or custom FILE) for exclusions; searches parent directories recursively\n");
+    printf("  --paste, -p [API_KEY] Upload output as GitHub Gist (API key optional, can also use GITHUB_API_KEY env variable)\n");
     printf("\nExample:\n");
     printf("  ./recap -i src -e build -c c h\n");
 }
@@ -131,8 +165,8 @@ void parse_arguments(int argc, char* argv[],
         {"content",    required_argument, 0, 'c'},
         {"include",    required_argument, 0, 'i'},
         {"exclude",    required_argument, 0, 'e'},
-        {"git",        no_argument,       0, 'g'},
-        {"paste",      required_argument, 0, 'p'},
+        {"git",        optional_argument, 0, 'g'},
+        {"paste",      optional_argument, 0, 'p'},
         // Add handling for these two:
         {"output",        required_argument, 0, 'o'},
         {"output-dir", required_argument, 0, 'O'},
@@ -140,7 +174,7 @@ void parse_arguments(int argc, char* argv[],
     };
 
     int opt, option_index = 0;
-    while ((opt = getopt_long(argc, argv, "hC::c:i:e:gp:o:O:", long_options, &option_index)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hC::c:i:e:g::p:o:O:", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'h':
             print_help();
@@ -206,11 +240,26 @@ void parse_arguments(int argc, char* argv[],
             break;
 
         case 'g':
-            load_gitignore(exclude_ctx);
+            // Accept optional argument for custom gitignore filename
+            if (!optarg && optind < argc && argv[optind][0] != '-') {
+                optarg = argv[optind++];
+            }
+            load_gitignore(exclude_ctx, optarg);
             break;
 
         case 'p':
-            *gist_api_key = optarg;
+            if (optarg) {
+                *gist_api_key = optarg;
+            }
+            else {
+                char* env_key = getenv("GITHUB_API_KEY");
+                if (env_key && strlen(env_key) > 0) {
+                    *gist_api_key = env_key;
+                }
+                else {
+                    *gist_api_key = NULL;
+                }
+            }
             break;
 
         case 'o':
