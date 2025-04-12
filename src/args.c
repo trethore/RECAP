@@ -9,9 +9,8 @@
 #include <ctype.h>
 #include <getopt.h>
 #include <limits.h>
-/**
- * Helper to add comma-separated content specifiers from a string to the content_ctx.
- */
+
+
 static void add_content_specifiers(const char* arg, content_ctx* ctx) {
     char* arg_copy = strdup(arg);
     if (!arg_copy) {
@@ -91,7 +90,6 @@ void clear_recap_output_files(const char* target_dir) {
 }
 
 void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_filename) {
-    // Recursively search for the gitignore file up to root
     char cwd[MAX_PATH_SIZE];
     if (!getcwd(cwd, sizeof(cwd))) {
         perror("getcwd");
@@ -102,7 +100,6 @@ void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_fil
     const char* filename = gitignore_filename && strlen(gitignore_filename) > 0 ? gitignore_filename : ".gitignore";
     int found = 0;
 
-    // Start from cwd, go up to root
     char* dir = strdup(cwd);
     while (dir && strlen(dir) > 0) {
         snprintf(search_path, sizeof(search_path), "%s/%s", dir, filename);
@@ -119,7 +116,6 @@ void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_fil
                 if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
                     continue;
                 }
-                // Support negation patterns (!), comments, blank lines
                 if (exclude_ctx->exclude_count < MAX_PATTERNS && gitignore_idx < MAX_GITIGNORE_ENTRIES) {
                     strncpy(exclude_ctx->gitignore_entries[gitignore_idx], trimmed_line, MAX_PATH_SIZE - 1);
                     exclude_ctx->gitignore_entries[gitignore_idx][MAX_PATH_SIZE - 1] = '\0';
@@ -134,15 +130,13 @@ void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_fil
                 }
             }
             fclose(git_ignore_file);
-            break; // Only load the first found .gitignore up the tree
+            break;
         }
-        // Move up one directory
         char* last_slash = strrchr(dir, '/');
         if (last_slash && last_slash != dir) {
             *last_slash = '\0';
         }
         else if (last_slash && last_slash == dir) {
-            // At root "/"
             dir[1] = '\0';
         }
         else {
@@ -151,8 +145,7 @@ void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_fil
     }
     free(dir);
     if (!found) {
-        // No .gitignore found
-        // fprintf(stderr, "No %s found in current or parent directories.\n", filename);
+        fprintf(stderr, "No %s found in current or parent directories.\n", filename);
     }
 }
 
@@ -233,11 +226,9 @@ void parse_arguments(int argc, char* argv[],
         case 'c': {
             content_context->content_flag = 1;
 
-            // Add specifiers from the initial optarg, if present
             if (optarg) {
                 add_content_specifiers(optarg, content_context);
             }
-            // Add subsequent non-flag arguments as additional specifiers
             while (optind < argc && argv[optind][0] != '-') {
                 add_content_specifiers(argv[optind], content_context);
                 optind++;
@@ -306,14 +297,11 @@ void parse_arguments(int argc, char* argv[],
         }
     }
 
-    // If no -i/--include was given, but a positional argument remains, treat it as the include path
     if (include_ctx->include_count == 0 && optind < argc) {
         include_ctx->include_patterns[include_ctx->include_count++] = argv[optind++];
     }
 
-    // If still no include path, error
     if (include_ctx->include_count == 0) {
-        // Default to current directory if no include path is specified
         fprintf(stderr, "No include path specified. Defaulting to current directory (\".\").\n");
         include_ctx->include_patterns[include_ctx->include_count++] = ".";
     }
