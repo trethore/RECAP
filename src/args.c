@@ -1,6 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "recap.h"
-#include <curl/curl.h> 
+#include <curl/curl.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -8,8 +8,7 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <getopt.h>
-#include <limits.h> 
-
+#include <limits.h>
 
 static int add_single_content_specifier(const char* token, content_ctx* ctx) {
     if (ctx->content_specifier_count >= MAX_CONTENT_SPECIFIERS) {

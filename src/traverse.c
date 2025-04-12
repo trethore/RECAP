@@ -19,7 +19,7 @@
 #ifndef DT_REG
 #define DT_REG 8
 #endif
-#ifndef DT_LNK 
+#ifndef DT_LNK
 #define DT_LNK 10
 #endif
 
