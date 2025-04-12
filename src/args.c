@@ -312,8 +312,8 @@ void parse_arguments(int argc, char* argv[],
 
     // If still no include path, error
     if (include_ctx->include_count == 0) {
-        fprintf(stderr, "Error: No include path specified. You must provide an include path as a positional argument or with -i.\n");
-        print_help();
-        exit(1);
+        // Default to current directory if no include path is specified
+        fprintf(stderr, "No include path specified. Defaulting to current directory (\".\").\n");
+        include_ctx->include_patterns[include_ctx->include_count++] = ".";
     }
 }
