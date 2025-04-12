@@ -248,17 +248,20 @@ void print_help(const char* version) {
         "-h, --help                Show this help message and exit\n"
         "-v, --version             Show version information (%s) and exit\n"
         "-C, --clear [DIR]         Clear recap-output files in the specified optional directory (default: current directory)\n"
-        "-c, --content [SPEC,...]  Specify content specifiers to include in the output\n"
+        "-c, --content [SPEC,...]  Specify content specifiers to include in the output (comma separated)\n"
         "-i, --include PATH        Include files or directories matching the or multiple specified path(s)\n"
         "-e, --exclude PATTERN     Exclude files or directories matching the specified pattern(s)\n"
-        "-g, --git [FILE]          Load exclude patterns from a .gitignore file (default: .gitignore)\n"
+        "-g, --git [FILE]          Use .gitignore for exclusions (if FILE is omitted, searches for .gitignore)\n"
         "-p, --paste [KEY]         Upload output to a gist using the specified GitHub API key (or GITHUB_API_KEY env var)\n"
-        "-o, --output FILE         Specify the output file name (default: recap-output.txt)\n"
-        "-O, --output-dir DIR      Specify the output directory (default: current directory)\n"
+        "-o, --output FILE         Specify the output file name\n"
+        "-O, --output-dir DIR      Specify the output directory\n"
         "\n"
         , version);
     printf("\nExamples:\n");
-    printf("  recap src/                   # Process 'src' directory\n");
+    printf("  recap src                          # Process 'src' directory\n");
+    printf("  recap -i src -e test.txt           # Include 'src' and exclude 'test.txt'\n");
+    printf("  recap -C                           # Clear all recap-output files in the current directory\n");
+    printf("  recap src -c c -o somedir/out.txt  # Process 'src' with content specifier 'c' to 'somedir/out.txt'\n");
 }
 
 
