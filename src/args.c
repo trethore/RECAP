@@ -133,9 +133,10 @@ void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_fil
 }
 
 void print_help() {
-    printf("Usage: recap [options]\n");
+    printf("Usage: recap [options] <include-path>\n");
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
+    printf("  --version             Show version information and exit\n");
     printf("  --clear, -C [DIR]     Remove previous recap-output files (optionally from DIR)\n");
     printf("  --content, -c [exts]  Include content of files with given extensions\n");
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
@@ -144,12 +145,17 @@ void print_help() {
     printf("  --paste, -p [API_KEY] Upload output as GitHub Gist (API key optional, can also use GITHUB_API_KEY env variable)\n");
     printf("  --output, -o FILE     Write the generated text to the specified file\n");
     printf("  --out-dir, -O DIR     Write the generated text to a timestamped file within the specified directory\n");
+    printf("\n");
+    printf("The <include-path> positional argument is required unless -i is used. You may specify the include path either as a positional argument or with -i.\n");
     printf("\nExamples:\n");
-    printf("  ./recap --output out.txt\n");
+    printf("  ./recap src\n");
+    printf("  ./recap -i src\n");
+    printf("  ./recap --output out.txt src\n");
+    printf("  ./recap --version\n");
     printf("  ./recap --output somedir/out.txt\n");
     printf("  ./recap --out-dir .\n");
     printf("  ./recap --out-dir somedir/\n");
-    printf("  ./recap -i src -e build -c c h\n");
+    printf("  ./recap -i src -e build -c c,h\n");
 }
 
 
@@ -158,7 +164,8 @@ void parse_arguments(int argc, char* argv[],
     exclude_patterns_ctx* exclude_ctx,
     output_ctx* output_context,
     content_ctx* content_context,
-    char** gist_api_key) {
+    char** gist_api_key,
+    const char* version) {
     include_ctx->include_count = 0;
     exclude_ctx->exclude_count = 0;
     content_context->content_specifier_count = 0;
@@ -167,20 +174,24 @@ void parse_arguments(int argc, char* argv[],
 
     static struct option long_options[] = {
         {"help",       no_argument,       0, 'h'},
+        {"version",    no_argument,       0,  0 },
         {"clear",      optional_argument, 0, 'C'},
         {"content",    required_argument, 0, 'c'},
         {"include",    required_argument, 0, 'i'},
         {"exclude",    required_argument, 0, 'e'},
         {"git",        optional_argument, 0, 'g'},
         {"paste",      optional_argument, 0, 'p'},
-        // Add handling for these two:
-        {"output",        required_argument, 0, 'o'},
+        {"output",     required_argument, 0, 'o'},
         {"output-dir", required_argument, 0, 'O'},
         {0, 0, 0, 0}
     };
 
     int opt, option_index = 0;
     while ((opt = getopt_long(argc, argv, "hC::c:i:e:g::p:o:O:", long_options, &option_index)) != -1) {
+        if (opt == 0 && strcmp(long_options[option_index].name, "version") == 0) {
+            printf("recap version %s\n", version ? version : "");
+            exit(0);
+        }
         switch (opt) {
         case 'h':
             print_help();
@@ -285,8 +296,15 @@ void parse_arguments(int argc, char* argv[],
         }
     }
 
+    // If no -i/--include was given, but a positional argument remains, treat it as the include path
+    if (include_ctx->include_count == 0 && optind < argc) {
+        include_ctx->include_patterns[include_ctx->include_count++] = argv[optind++];
+    }
 
+    // If still no include path, error
     if (include_ctx->include_count == 0) {
-        include_ctx->include_patterns[include_ctx->include_count++] = ".";
+        fprintf(stderr, "Error: No include path specified. You must provide an include path as a positional argument or with -i.\n");
+        print_help();
+        exit(1);
     }
 }

@@ -5,6 +5,7 @@
 
 FILE* output = NULL;
 char* gist_api_key = NULL;
+const char* RECAP_VERSION = "1.0.0";
 
 int main(int argc, char* argv[]) {
     include_patterns_ctx include_ctx = { 0 };
@@ -13,7 +14,7 @@ int main(int argc, char* argv[]) {
     content_ctx content_context = { 0 };
     curl_global_init(CURL_GLOBAL_ALL);
 
-    parse_arguments(argc, argv, &include_ctx, &exclude_ctx, &output_context, &content_context, &gist_api_key);
+    parse_arguments(argc, argv, &include_ctx, &exclude_ctx, &output_context, &content_context, &gist_api_key, RECAP_VERSION);
 
     char* filename = get_output_filename(output, &output_context);
     if (!filename) {

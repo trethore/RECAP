@@ -12,13 +12,13 @@
 * [X] Add a warning to `--clear` since it removes all ctf-output files
 * [X] Remove `--name` no longer useful
 * [X] Remove `--dir` no longer useful
-* [ ] Add `--version`
+* [X] Add `--version`
 * [ ] Remove Herobrine
 
 ## TOCONSIDER
 
 * [ ] `--content` allow multiple options instead of custom quote separation logic (current logic is fine, but what if you want to target extensions containing quotes? it's a rabbit hole of escaping mechanisms. better let the shell handle it)
-* [ ] add non-option argument for source directory(ies?): currently it's always `.`
+* [X] add non-option argument for source directory(ies?): currently it's always `.`
 * [X] Allow custom .gitignore filename as `--git` option argument, or load it from parent directory recursively (until root) if not found. Also check if there's a library to interpret the full syntax (comment, !-lines...)
 
 ## Building the Project

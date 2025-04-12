@@ -39,7 +39,7 @@ typedef struct {
 } content_ctx;
 
 
-void parse_arguments(int argc, char* argv[], include_patterns_ctx* include_ctx, exclude_patterns_ctx* exclude_ctx, output_ctx* output_context, content_ctx* content_context, char** gist_api_key);
+void parse_arguments(int argc, char* argv[], include_patterns_ctx* include_ctx, exclude_patterns_ctx* exclude_ctx, output_ctx* output_context, content_ctx* content_context, char** gist_api_key, const char* version);
 void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_filename);
 void clear_recap_output_files(const char* target_dir);
 
