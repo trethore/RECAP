@@ -9,6 +9,30 @@
 #include <ctype.h>
 #include <getopt.h>
 #include <limits.h>
+/**
+ * Helper to add comma-separated content specifiers from a string to the content_ctx.
+ */
+static void add_content_specifiers(const char* arg, content_ctx* ctx) {
+    char* arg_copy = strdup(arg);
+    if (!arg_copy) {
+        fprintf(stderr, "Memory allocation error\n");
+        exit(1);
+    }
+    char* save_ptr = NULL;
+    char* token = strtok_r(arg_copy, ",", &save_ptr);
+    while (token != NULL) {
+        if (ctx->content_specifier_count < MAX_CONTENT_SPECIFIERS) {
+            ctx->content_specifiers[ctx->content_specifier_count++] = strdup(token);
+        }
+        else {
+            fprintf(stderr, "Too many content specifiers. Max allowed is %d\n", MAX_CONTENT_SPECIFIERS);
+            free(arg_copy);
+            exit(1);
+        }
+        token = strtok_r(NULL, ",", &save_ptr);
+    }
+    free(arg_copy);
+}
 
 // ptn de warning de merde, WSL warning pls dont put too much brain power into this next line
 char* realpath(const char* restrict path, char* restrict resolved_path);
@@ -136,7 +160,7 @@ void print_help() {
     printf("Usage: recap [options] <include-path>\n");
     printf("Options:\n");
     printf("  --help, -h            Show this help message and exit\n");
-    printf("  --version             Show version information and exit\n");
+    printf("  --version, -v         Show version information and exit\n");
     printf("  --clear, -C [DIR]     Remove previous recap-output files (optionally from DIR)\n");
     printf("  --content, -c [exts]  Include content of files with given extensions\n");
     printf("  --include, -i PATH    Include specific file or directory (repeatable)\n");
@@ -174,7 +198,7 @@ void parse_arguments(int argc, char* argv[],
 
     static struct option long_options[] = {
         {"help",       no_argument,       0, 'h'},
-        {"version",    no_argument,       0,  0 },
+        {"version",    no_argument,       0, 'v'},
         {"clear",      optional_argument, 0, 'C'},
         {"content",    required_argument, 0, 'c'},
         {"include",    required_argument, 0, 'i'},
@@ -187,11 +211,7 @@ void parse_arguments(int argc, char* argv[],
     };
 
     int opt, option_index = 0;
-    while ((opt = getopt_long(argc, argv, "hC::c:i:e:g::p:o:O:", long_options, &option_index)) != -1) {
-        if (opt == 0 && strcmp(long_options[option_index].name, "version") == 0) {
-            printf("recap version %s\n", version ? version : "");
-            exit(0);
-        }
+    while ((opt = getopt_long(argc, argv, "hC::c:i:e:g::p:o:O:v", long_options, &option_index)) != -1) {
         switch (opt) {
         case 'h':
             print_help();
@@ -213,26 +233,14 @@ void parse_arguments(int argc, char* argv[],
         case 'c': {
             content_context->content_flag = 1;
 
-            char* arg_copy = strdup(optarg);
-            if (!arg_copy) {
-                fprintf(stderr, "Memory allocation error\n");
-                exit(1);
+            // Add specifiers from the initial optarg
+            add_content_specifiers(optarg, content_context);
+
+            // Add subsequent non-flag arguments as additional specifiers
+            while (optind < argc && argv[optind][0] != '-') {
+                add_content_specifiers(argv[optind], content_context);
+                optind++;
             }
-            char* save_ptr = NULL;
-            char* token = strtok_r(arg_copy, ",", &save_ptr);
-            while (token != NULL) {
-                if (content_context->content_specifier_count < MAX_CONTENT_SPECIFIERS) {
-                    content_context->content_specifiers[content_context->content_specifier_count++] = strdup(token);
-                }
-                else {
-                    fprintf(stderr, "Too many content specifiers. Max allowed is %d\n",
-                        MAX_CONTENT_SPECIFIERS);
-                    free(arg_copy);
-                    exit(1);
-                }
-                token = strtok_r(NULL, ",", &save_ptr);
-            }
-            free(arg_copy);
             break;
         }
 
@@ -257,7 +265,6 @@ void parse_arguments(int argc, char* argv[],
             break;
 
         case 'g':
-            // Accept optional argument for custom gitignore filename
             if (!optarg && optind < argc && argv[optind][0] != '-') {
                 optarg = argv[optind++];
             }
@@ -288,7 +295,9 @@ void parse_arguments(int argc, char* argv[],
             strncpy(output_context->output_dir, optarg, MAX_PATH_SIZE - 1);
             output_context->output_dir[MAX_PATH_SIZE - 1] = '\0';
             break;
-
+        case 'v':
+            printf("recap version %s\n", version);
+            exit(0);
         case '?':
         default:
             print_help();
