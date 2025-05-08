@@ -4,14 +4,20 @@ MANDIR := $(PREFIX)/share/man/man1
 
 CC = gcc
 CFLAGS = -Wall -Wextra -std=gnu11 -g -D_POSIX_C_SOURCE=200809L
+
+ifeq ($(OS), Windows_NT)
+LIBS =
+else
 LIBS = -lcurl -ljansson
+endif
+
 
 SRCDIR = src
 OBJDIR = obj
 EXEC = recap
 MANPAGE = doc/recap.1
 
-SOURCES = $(wildcard $(SRCDIR)/*.c) 
+SOURCES = $(wildcard $(SRCDIR)/*.c) $(wildcard $(SRCDIR)/lib/*.c) 
 OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
 
 all: $(EXEC)
@@ -24,7 +30,7 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.c $(SRCDIR)/recap.h | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJDIR):
-	@mkdir -p $(OBJDIR)
+	@mkdir -p $(OBJDIR)/lib
 
 clean:
 	rm -rf $(OBJDIR) $(EXEC)

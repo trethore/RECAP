@@ -1,6 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
 #include "recap.h"
-#include <curl/curl.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>

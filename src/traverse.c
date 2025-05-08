@@ -2,7 +2,7 @@
 #include "recap.h"
 #include <limits.h>
 #include <stdlib.h>
-#include <fnmatch.h>
+#include "lib/fnmatch.h"
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -22,6 +22,25 @@
 #ifndef DT_LNK
 #define DT_LNK 10
 #endif
+
+
+#ifdef _WIN32
+    typedef struct _stat64i32 stat_t;
+    #define lstat _stat
+    #define stat _stat
+    #define S_ISLNK(m) 0  /* Windows doesn't have S_ISLNK reliably */
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <direct.h>
+    #include <io.h>
+    #define S_IFLNK 0120000
+#else
+    typedef struct stat stat_t;
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <unistd.h>
+#endif
+
 
 
 void print_indent(int depth, FILE* output) {
@@ -222,7 +241,7 @@ int start_traversal(const char* initial_path, recap_context* ctx) {
         return 0;
     }
 
-    struct stat st;
+    stat_t st;
     if (stat(path_normalized, &st) != 0) {
         perror("stat include path");
         fprintf(stderr, "Warning: Could not stat include path: %s. Skipping.\n", initial_path);
@@ -305,7 +324,7 @@ void traverse_directory(const char* base_path, int depth, recap_context* ctx) {
         else
 #endif
         {
-            struct stat st;
+            stat_t st;
             if (lstat(full_path, &st) != 0) {
                 fprintf(stderr, "Warning: Could not lstat entry %s: %s. Skipping.\n", full_path, strerror(errno));
                 continue;

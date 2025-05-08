@@ -1,6 +1,5 @@
 #define _POSIX_C_SOURCE 200809L
 #include "recap.h"
-#include <curl/curl.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <stdlib.h>
@@ -15,11 +14,6 @@ int main(int argc, char* argv[]) {
 
     int result = 0;
     char* allocated_output_filename = NULL;
-
-    if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
-        fprintf(stderr, "Error: Failed to initialize libcurl.\n");
-        return 1;
-    }
 
     parse_arguments(argc, argv, &ctx);
 
@@ -136,6 +130,5 @@ cleanup:
         ctx.output_stream = NULL;
     }
     free_content_specifiers(&ctx.content);
-    curl_global_cleanup();
     return result;
 }

@@ -13,5 +13,10 @@
         "limits.h": "c",
         "unistd.h": "c",
         "fnmatch.h": "c"
-    }
+    },
+    "vcpkg.target.useStaticLib": true,
+    "vcpkg.target.defaultTriplet": "-static",
+    "cmake.configureArgs": [
+        "-DVCPKG_TARGET_TRIPLET=-static"
+    ]
 }

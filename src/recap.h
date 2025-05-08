@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <ctype.h>
-#include <fnmatch.h>
+#include "lib/fnmatch.h"
 #include <limits.h>
 
 #define MAX_PATH_SIZE 1024
@@ -59,7 +59,16 @@ typedef struct {
 void parse_arguments(int argc, char* argv[], recap_context* ctx);
 void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_filename);
 void clear_recap_output_files(const char* target_dir);
-char* realpath(const char* restrict path, char* restrict resolved_path);
+
+
+#ifdef _WIN32
+    #include <stdlib.h>
+    #define realpath(N, R) _fullpath((R), (N), PATH_MAX)
+#else
+    char* realpath(const char* restrict path, char* restrict resolved_path);
+#endif
+
+
 
 
 void traverse_directory(const char* base_path, int depth, recap_context* ctx);

@@ -1,13 +1,33 @@
 #define _POSIX_C_SOURCE 200809L
+
+#include <stdlib.h>
 #include "recap.h"
+
+#ifdef _WIN32
+
+#include <stdio.h>
+
+__attribute__((noreturn)) char* upload_to_gist(const char* filepath, const char* github_token) {
+    (void)filepath;
+    (void)github_token;
+    fprintf(stderr, "Error: gist upload unavailable on windows");
+    exit(1);
+}
+
+#else
+
+
 #include <curl/curl.h>
 #include <sys/stat.h>
 #include <jansson.h>
+#include <stdbool.h>
 
 struct MemoryStruct {
     char* memory;
     size_t size;
 };
+
+static gs_curl_inited;
 
 static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     size_t realsize = size * nmemb;
@@ -33,6 +53,14 @@ static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, voi
 }
 
 char* upload_to_gist(const char* filepath, const char* github_token) {
+    if (!gs_curl_inited) {
+        gs_curl_inited = true;
+        if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
+            fprintf(stderr, "Error: Failed to initialize libcurl.\n");
+            exit(1);
+        }
+        atexit(curl_global_cleanup);
+    }
     if (!github_token || github_token[0] == '\0') {
         fprintf(stderr, "Gist upload error: GitHub API token is missing or empty.\n");
         return NULL;
@@ -218,3 +246,5 @@ char* upload_to_gist(const char* filepath, const char* github_token) {
 
     return html_url;
 }
+
+#endif
