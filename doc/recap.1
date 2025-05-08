@@ -52,9 +52,22 @@ GIST_API_KEY:GitHub Gist API key; expected when \fB\-\-paste\fR is passed withou
 .TE
 .RE
 .SH EXIT STATUS
-TODO
+0 on success, 1 on error. Errors are printed to standard error.
 .SH EXAMPLES
-TODO
+.RS 4
+.TP
+.B recap src
+Process 'src’ directory
+.TP
+.B recap \-i src \-e test.txt
+Include 'src’ and exclude 'test.txt’
+.TP
+.B recap \-C
+Clear all recap-output files in the current directory
+.TP
+.B recap src \-c c \-o somedir/out.txt
+Process 'src’ with content specifier 'c’ to 'somedir/out.txt’
+.RE
 .SH AUTHOR
 Written by Trethore and Scover.
 .SH REPORTING BUGS
