@@ -1,54 +1,65 @@
-.TH RECAP 1 "April 2025" "recap 1.0" "User Commands"
+.TH RECAP 1 "April 2025" "recap 2.0.0" "User Commands"
 .SH NAME
 recap \- capture the structure and content of a workspace and consolidate it into a single text output
 .SH SYNOPSIS
 .B recap
-[\fIOPTION\fR]...
+[\fIOPTION\fR]... [\fIPATH\fR]...
 .SH DESCRIPTION
-A command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code.
+A command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code. It uses extended regular expressions for powerful filtering of paths and content.
 .SH OPTIONS
-Mandatory arguments to long options are mandatory for short options too.
-.TP
-.B \-C, \-\-clear[=\fIDIR]
-remove previous recap-output files (optionally from DIR)
-.TP
-.B \-c, \-\-content=\fIEXTS
-include content of files with given the extensions
-.I EXTS
-is a comma-separated list of file extensions, without the leading dot
-.TP
-.B \-i, \-\-include=\fIPATH
-include a specific file or directory; can be repeated
-.TP
-.B \-e, \-\-exclude=\fIPATH
-exclude a specific file or directory; can be repeated
-.TP
-.B \-g, \-\-git
-attemps to open the file
-.I .gitignore
-in the current directory and load exclusions from it
-.TP
-.B \-p, \-\-paste[\=\fIGIST_API_KEY]
-upload output as GitHub Gist; if no argument is specified, it reads from the
-.I GIST_API_KEY
-environment variable
-.TP
-.B \-o, \-\-output=\fIFILE
-output to
-.I FILE
-.TP
-.B \-O, \-\-output-dir=\fIDIR
-output a timestampped file to
-.I DIR
+All filters use extended REGEX. Mandatory arguments to long options are mandatory for short options too.
 .TP
 .B \-h, \-\-help
-output a help message and exit
+Show this help message and exit.
+.TP
+.B \-v, \-\-version
+Show version information and exit.
+.TP
+.B \-C, \-\-clear[=\fIDIR]
+Remove previous recap-output files (optionally from DIR, defaults to '.') and exit.
+.TP
+.B \-i, \-\-include=\fIREGEX\fR
+Include only paths matching the regular expression. Can be repeated.
+.TP
+.B \-e, \-\-exclude=\fIREGEX\fR
+Exclude any path matching the regular expression. Can be repeated.
+.TP
+.B \-I, \-\-include-content=\fIREGEX\fR
+Show content for files with paths matching the regular expression. Can be repeated.
+.TP
+.B \-E, \-\-exclude-content=\fIREGEX\fR
+Do not show content for files with paths matching the regular expression. Can berepeated.
+.TP
+.B \-s, \-\-strip=\fIREGEX\fR
+In content blocks, skip all lines until a line matches the regular expression.
+.TP
+.B \-g, \-\-git[=\fIFILE]
+Use .gitignore patterns for exclusions. Searches upwards from the current directory for
+.I .gitignore
+or uses the optional
+.I FILE
+argument.
+.TP
+.B \-p, \-\-paste[=\fIKEY]
+Upload output as a private GitHub Gist. If no API key is specified, it reads from the
+.I GITHUB_API_KEY
+environment variable.
+.TP
+.B \-o, \-\-output=\fIFILE
+Output to
+.I FILE.
+This disables output to stdout.
+.TP
+.B \-O, \-\-output-dir=\fIDIR
+Output a timestamped file to
+.I DIR.
+This disables output to stdout.
 .SH ENVIRONMENT
 .RS
 .TS
 tab(:);
 l l.
-GIST_API_KEY:GitHub Gist API key; expected when \fB\-\-paste\fR is passed without an argument.
+GITHUB_API_KEY:GitHub API key; used by \fB\-\-paste\fR if a key is not provided as an argument.
 .TE
 .RE
 .SH EXIT STATUS
@@ -56,17 +67,17 @@ GIST_API_KEY:GitHub Gist API key; expected when \fB\-\-paste\fR is passed withou
 .SH EXAMPLES
 .RS 4
 .TP
-.B recap src
-Process 'src’ directory
+.B recap src doc -I '\e\e.(c|h|md)$'
+Process 'src' and 'doc' directories, including content for files ending in .c, .h, or .md.
 .TP
-.B recap \-i src \-e test.txt
-Include 'src’ and exclude 'test.txt’
+.B recap -e '^(obj|test)/'
+Process the current directory, excluding any paths that start with 'obj/' or 'test/'.
 .TP
-.B recap \-C
-Clear all recap-output files in the current directory
+.B recap -g --paste
+Process the project using .gitignore rules for exclusion and upload the result to a Gist.
 .TP
-.B recap src \-c c \-o somedir/out.txt
-Process 'src’ with content specifier 'c’ to 'somedir/out.txt’
+.B recap -I '\e\e.c$' -s 'int main\e\(' -o c_main_funcs.txt
+Output the content of all C files, but strip the content of each file before its `int main(` line.
 .RE
 .SH AUTHOR
 Written by Trethore and Scover.
