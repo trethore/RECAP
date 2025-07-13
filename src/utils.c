@@ -56,8 +56,9 @@ void normalize_path(char* path) {
     p = path;
     if (path[0] == '/') *p++ = '/';
     for (int j = 0; j < top; j++) {
-        strcpy(p, components[j]);
-        p += strlen(components[j]);
+        size_t component_len = strlen(components[j]);
+        memmove(p, components[j], component_len);
+        p += component_len;
         if (j < top - 1) *p++ = '/';
     }
     *p = '\0';
