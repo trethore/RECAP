@@ -5,8 +5,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <regex.h>
 
-const char* RECAP_VERSION = "1.0.0";
+const char* RECAP_VERSION = "2.0.0";
 
 int main(int argc, char* argv[]) {
     recap_context ctx = { 0 };
@@ -22,7 +23,7 @@ int main(int argc, char* argv[]) {
     }
 
     parse_arguments(argc, argv, &ctx);
-
+    ctx.version = RECAP_VERSION;
 
     if (ctx.output.output_name[0] == '\0' && ctx.output.output_dir[0] == '\0') {
         ctx.output.use_stdout = 1;
@@ -49,11 +50,11 @@ int main(int argc, char* argv[]) {
     }
 
 
-
     int processed_something = 0;
-    for (int i = 0; i < ctx.includes.include_count; i++) {
-        start_traversal(ctx.includes.include_patterns[i], &ctx);
+    for (int i = 0; i < ctx.start_path_count; i++) {
+        start_traversal(ctx.start_paths[i], &ctx);
     }
+
 
     if (ctx.output_stream) {
         fflush(ctx.output_stream);
@@ -66,7 +67,6 @@ int main(int argc, char* argv[]) {
         }
         else if (output_size == 0) {
             processed_something = 0;
-            fprintf(stderr, "No content written to output file (all includes might have been excluded or empty).\n");
         }
         else {
             perror("ftell output file");
@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
         }
     }
     else if (ctx.output.use_stdout) {
-        if (ctx.includes.include_count > 0) processed_something = 1;
+        if (ctx.start_path_count > 0) processed_something = 1;
     }
 
 
@@ -87,7 +87,9 @@ int main(int argc, char* argv[]) {
         if (ctx.gist_api_key != NULL) {
             if (!ctx.gist_api_key || ctx.gist_api_key[0] == '\0') {
                 fprintf(stderr, "Error: Gist upload requested (--paste), but no API key provided via argument or GITHUB_API_KEY environment variable.\n");
-                fprintf(stderr, "Output saved locally to %s\n", allocated_output_filename);
+                if (allocated_output_filename) {
+                    fprintf(stderr, "Output saved locally to %s\n", allocated_output_filename);
+                }
                 result = 1;
             }
             else if (ctx.output.use_stdout) {
@@ -113,19 +115,19 @@ int main(int argc, char* argv[]) {
             }
         }
         else {
-            if (!ctx.output.use_stdout) {
+            if (!ctx.output.use_stdout && allocated_output_filename) {
                 printf("Output written to %s\n", allocated_output_filename);
             }
         }
     }
     else {
         if (!ctx.output.use_stdout && allocated_output_filename) {
-            fprintf(stderr, "No files processed or written. Removing empty output file: %s\n", allocated_output_filename);
+            fprintf(stderr, "Info: No files processed or written. Removing empty output file: %s\n", allocated_output_filename);
             remove(allocated_output_filename);
             allocated_output_filename = NULL;
         }
         else if (ctx.output.use_stdout) {
-            fprintf(stderr, "No files processed or written to stdout.\n");
+            fprintf(stderr, "Info: No files matched the criteria to be processed or written to stdout.\n");
         }
     }
 
@@ -135,7 +137,15 @@ cleanup:
         fclose(ctx.output_stream);
         ctx.output_stream = NULL;
     }
-    free_content_specifiers(&ctx.content);
+
+    free_regex_ctx(&ctx.include_filters);
+    free_regex_ctx(&ctx.exclude_filters);
+    free_regex_ctx(&ctx.content_include_filters);
+    free_regex_ctx(&ctx.content_exclude_filters);
+    if (ctx.strip_until_regex_is_set) {
+        regfree(&ctx.strip_until_regex);
+    }
+
     curl_global_cleanup();
     return result;
 }

@@ -107,7 +107,7 @@ void normalize_path(char* path) {
                     segments--;
                 }
                 else if (!is_absolute && segments == 0) {
-                    if (write_idx > 0 && result[write_idx - 1] != '/') result[write_idx++] = '/'; // Ensure separator
+                    if (write_idx > 0 && result[write_idx - 1] != '/') result[write_idx++] = '/';
                     result[write_idx++] = '.';
                     result[write_idx++] = '.';
                     segments++;
@@ -150,42 +150,6 @@ void normalize_path(char* path) {
     }
 
     result[write_idx] = '\0';
-}
-
-int should_show_content(const char* filename, const char* full_path, const content_ctx* content_context) {
-    if (!content_context->content_flag) {
-        return 0;
-    }
-
-    if (content_context->content_specifier_count == 0) {
-        return is_text_file(full_path);
-    }
-
-    const char* base_filename = strrchr(filename, '/');
-    base_filename = base_filename ? base_filename + 1 : filename;
-
-    const char* dot = strrchr(base_filename, '.');
-    const char* ext = (dot && dot != base_filename && dot[1] != '\0') ? dot + 1 : NULL; // Ensure dot is not last char
-
-    for (int i = 0; i < content_context->content_specifier_count; i++) {
-        const char* spec = content_context->content_specifiers[i];
-
-        if (strcmp(base_filename, spec) == 0) {
-            return is_text_file(full_path);
-        }
-
-        if (strcmp(spec, "null") == 0 && !ext) {
-            return is_text_file(full_path);
-        }
-
-        if (ext && strchr(spec, '.') == NULL && strchr(spec, '/') == NULL) {
-            if (strcmp(ext, spec) == 0) {
-                return is_text_file(full_path);
-            }
-        }
-    }
-
-    return 0;
 }
 
 int generate_output_filename(output_ctx* ctx) {
