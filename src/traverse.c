@@ -8,6 +8,28 @@
 #include <string.h>
 #include <unistd.h>
 
+static int path_list_init(path_list* list) {
+    list->items = malloc(16 * sizeof(char*));
+    if (!list->items) return -1;
+    list->count = 0;
+    list->capacity = 16;
+    return 0;
+}
+
+static int path_list_add(path_list* list, const char* path) {
+    if (list->count >= list->capacity) {
+        size_t new_capacity = list->capacity * 2;
+        char** new_items = realloc(list->items, new_capacity * sizeof(char*));
+        if (!new_items) return -1;
+        list->items = new_items;
+        list->capacity = new_capacity;
+    }
+    list->items[list->count] = strdup(path);
+    if (!list->items[list->count]) return -1;
+    list->count++;
+    return 0;
+}
+
 static int match_regex_list(const regex_ctx* ctx, const char* str) {
     for (int i = 0; i < ctx->count; i++) {
         if (regexec(&ctx->compiled[i], str, 0, NULL, 0) == 0) return 1;
@@ -46,7 +68,7 @@ static int should_be_skipped(const char* rel_path, const struct stat* st, recap_
     return 0;
 }
 
-int should_show_content(const char* rel_path, const char* full_path, recap_context* ctx) {
+static int should_show_content(const char* rel_path, const char* full_path, recap_context* ctx) {
     if (ctx->content_exclude_filters.count > 0 && match_regex_list(&ctx->content_exclude_filters, rel_path)) return 0;
     if (ctx->content_include_filters.count > 0) {
         if (match_regex_list(&ctx->content_include_filters, rel_path)) {
@@ -56,16 +78,11 @@ int should_show_content(const char* rel_path, const char* full_path, recap_conte
     return 0;
 }
 
-void print_indent(int depth, FILE* output) {
-    for (int i = 0; i < depth; i++) {
-        fputc('\t', output);
-    }
-}
+static void write_file_content_block(const char* full_path, const char* rel_path, recap_context* ctx) {
+    fprintf(ctx->output_stream, "%s:\n", rel_path);
 
-void write_file_content(const char* filepath, int depth, recap_context* ctx) {
-    FILE* f = fopen(filepath, "r");
+    FILE* f = fopen(full_path, "r");
     if (!f) {
-        print_indent(depth, ctx->output_stream);
         fprintf(ctx->output_stream, "[Error reading file content]\n");
         return;
     }
@@ -95,15 +112,32 @@ void write_file_content(const char* filepath, int depth, recap_context* ctx) {
         }
         else {
             previous_line_was_blank = 0;
-            print_indent(depth, ctx->output_stream);
-            fputs(line, ctx->output_stream);
-            fputc('\n', ctx->output_stream);
+            fprintf(ctx->output_stream, "%s\n", line);
         }
     }
     fclose(f);
 }
 
-void traverse_directory(const char* base_path, const char* rel_path_prefix, int depth, recap_context* ctx) {
+static void print_output(recap_context* ctx) {
+    for (size_t i = 0; i < ctx->matched_files.count; i++) {
+        const char* full_path = ctx->matched_files.items[i];
+        char rel_path[MAX_PATH_SIZE];
+        get_relative_path(full_path, ctx->cwd, rel_path, sizeof(rel_path));
+
+        if (i > 0) {
+            fprintf(ctx->output_stream, "---\n");
+        }
+
+        if (should_show_content(rel_path, full_path, ctx)) {
+            write_file_content_block(full_path, rel_path, ctx);
+        }
+        else {
+            fprintf(ctx->output_stream, "%s\n", rel_path);
+        }
+    }
+}
+
+static void traverse_directory(const char* base_path, const char* rel_path_prefix, recap_context* ctx) {
     DIR* dir = opendir(base_path);
     if (!dir) return;
 
@@ -144,28 +178,18 @@ void traverse_directory(const char* base_path, const char* rel_path_prefix, int 
             continue;
         }
 
-        ctx->items_processed_count++;
-        print_indent(depth, ctx->output_stream);
-
         if (S_ISDIR(st.st_mode)) {
-            fprintf(ctx->output_stream, "%s/\n", entry->d_name);
-            char next_rel_prefix[MAX_PATH_SIZE];
-            len = snprintf(next_rel_prefix, sizeof(next_rel_prefix), "%s/", rel_path);
-            if (len >= 0 && (size_t)len < sizeof(next_rel_prefix)) {
-                traverse_directory(full_path, next_rel_prefix, depth + 1, ctx);
+            char dir_rel_path[MAX_PATH_SIZE];
+            int dir_len = snprintf(dir_rel_path, sizeof(dir_rel_path), "%s/", rel_path);
+            if (dir_len < 0 || (size_t)dir_len >= sizeof(dir_rel_path)) {
+                fprintf(stderr, "Warning: path too long, skipping directory: %s\n", rel_path);
+                free(namelist[i]);
+                continue;
             }
-        }
-        else if (S_ISLNK(st.st_mode)) {
-            fprintf(ctx->output_stream, "%s@\n", entry->d_name);
+            traverse_directory(full_path, dir_rel_path, ctx);
         }
         else if (S_ISREG(st.st_mode)) {
-            if (should_show_content(rel_path, full_path, ctx)) {
-                fprintf(ctx->output_stream, "%s:\n", entry->d_name);
-                write_file_content(full_path, depth + 1, ctx);
-            }
-            else {
-                fprintf(ctx->output_stream, "%s\n", entry->d_name);
-            }
+            path_list_add(&ctx->matched_files, full_path);
         }
         free(namelist[i]);
     }
@@ -174,6 +198,11 @@ void traverse_directory(const char* base_path, const char* rel_path_prefix, int 
 }
 
 int start_traversal(recap_context* ctx) {
+    if (path_list_init(&ctx->matched_files) != 0) {
+        fprintf(stderr, "Error: Failed to initialize path list.\n");
+        return 1;
+    }
+
     for (int i = 0; i < ctx->start_path_count; i++) {
         char path[MAX_PATH_SIZE], rel_path[MAX_PATH_SIZE];
         strncpy(path, ctx->start_paths[i], sizeof(path) - 1);
@@ -190,35 +219,20 @@ int start_traversal(recap_context* ctx) {
 
         if (should_be_skipped(rel_path, &st, ctx)) continue;
 
-        ctx->items_processed_count++;
-        const char* basename = strrchr(path, '/');
-        basename = basename ? basename + 1 : path;
-
         if (S_ISDIR(st.st_mode)) {
-            fprintf(ctx->output_stream, "%s/\n", strcmp(path, ".") == 0 ? "." : basename);
-            char rel_prefix[MAX_PATH_SIZE];
-            int len;
-            if (strcmp(rel_path, ".") == 0) {
-                rel_prefix[0] = '\0';
-                len = 0;
+            char dir_rel_path[MAX_PATH_SIZE];
+            int dir_len = snprintf(dir_rel_path, sizeof(dir_rel_path), "%s/", rel_path);
+            if (dir_len < 0 || (size_t)dir_len >= sizeof(dir_rel_path)) {
+                fprintf(stderr, "Warning: path too long, skipping start directory: %s\n", rel_path);
+                continue;
             }
-            else {
-                len = snprintf(rel_prefix, sizeof(rel_prefix), "%s/", rel_path);
-            }
-
-            if (len >= 0 && (size_t)len < sizeof(rel_prefix)) {
-                traverse_directory(path, rel_prefix, 1, ctx);
-            }
+            traverse_directory(path, strcmp(rel_path, ".") == 0 ? "" : dir_rel_path, ctx);
         }
         else if (S_ISREG(st.st_mode)) {
-            if (should_show_content(rel_path, path, ctx)) {
-                fprintf(ctx->output_stream, "%s:\n", basename);
-                write_file_content(path, 1, ctx);
-            }
-            else {
-                fprintf(ctx->output_stream, "%s\n", basename);
-            }
+            path_list_add(&ctx->matched_files, path);
         }
     }
+
+    print_output(ctx);
     return 0;
 }

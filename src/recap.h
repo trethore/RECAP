@@ -4,10 +4,17 @@
 #include <stdio.h>
 #include <regex.h>
 #include <sys/stat.h>
+#include <stddef.h>
 
 #define MAX_PATH_SIZE 4096
 #define MAX_PATTERNS 256
 #define MAX_GITIGNORE_ENTRIES 1024
+
+typedef struct {
+    char** items;
+    size_t count;
+    size_t capacity;
+} path_list;
 
 typedef struct {
     regex_t compiled[MAX_PATTERNS];
@@ -30,7 +37,6 @@ typedef struct {
 typedef struct {
     const char* start_paths[MAX_PATTERNS];
     int start_path_count;
-    int items_processed_count;
     char cwd[MAX_PATH_SIZE];
 
     regex_ctx include_filters;
@@ -46,6 +52,8 @@ typedef struct {
     int strip_regex_is_set;
 
     output_ctx output;
+    path_list matched_files;
+
     const char* gist_api_key;
     const char* version;
     FILE* output_stream;

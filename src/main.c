@@ -8,6 +8,18 @@
 
 const char* RECAP_VERSION = "2.0.0";
 
+static void path_list_free(path_list* list) {
+    if (list) {
+        for (size_t i = 0; i < list->count; i++) {
+            free(list->items[i]);
+        }
+        free(list->items);
+        list->items = NULL;
+        list->count = 0;
+        list->capacity = 0;
+    }
+}
+
 static int setup_output_stream(recap_context* ctx) {
     if (ctx->output.output_name[0] == '\0' && ctx->output.output_dir[0] == '\0') {
         ctx->output.use_stdout = 1;
@@ -29,13 +41,13 @@ static int setup_output_stream(recap_context* ctx) {
 }
 
 static void handle_post_processing(recap_context* ctx) {
-    if (ctx->items_processed_count == 0) {
+    if (ctx->matched_files.count == 0) {
         if (!ctx->output.use_stdout) {
             fprintf(stderr, "Info: No files matched criteria. Removing empty output file: %s\n", ctx->output.calculated_output_path);
             remove(ctx->output.calculated_output_path);
         }
         else {
-            fprintf(stderr, "Info: No files matched the criteria to be processed.\n");
+            fprintf(stderr, "Info: No files matched the specified criteria.\n");
         }
         return;
     }
@@ -105,6 +117,7 @@ cleanup:
     if (ctx.output_stream && ctx.output_stream != stdout) {
         fclose(ctx.output_stream);
     }
+    path_list_free(&ctx.matched_files);
     free_regex_ctx(&ctx.include_filters);
     free_regex_ctx(&ctx.exclude_filters);
     free_regex_ctx(&ctx.content_include_filters);

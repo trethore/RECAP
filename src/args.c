@@ -107,22 +107,22 @@ void load_gitignore(recap_context* ctx, const char* gitignore_filename_arg) {
 
 void print_help(const char* version) {
     printf("Usage: recap [options] [path...]\n");
-    printf("  `path...` are the starting points for traversal (default: .)\n\n");
-    printf("Options:\n");
-    printf("  -h, --help                  Show this help message and exit\n");
-    printf("  -v, --version               Show version information (%s) and exit\n", version);
-    printf("  -C, --clear [DIR]           Clear recap-output files in [DIR] (default: .)\n\n");
-    printf("Filtering and Content:\n");
-    printf("  -i, --include <REGEX>       Include only paths that match REGEX.\n");
-    printf("  -e, --exclude <REGEX>       Exclude any path that matches REGEX.\n");
-    printf("  -I, --include-content <R>   Show content for files matching <R>.\n");
-    printf("  -E, --exclude-content <R>   Exclude content for files matching <R>.\n");
-    printf("  -s, --strip <REGEX>         Skip lines until a line matches REGEX.\n");
-    printf("  -g, --git [FILE]            Use .gitignore for exclusions.\n\n");
+    printf("  `path...` are the starting points for traversal (default: .).\n\n");
+    printf("General Options:\n");
+    printf("  -h, --help                  Show this help message and exit.\n");
+    printf("  -v, --version               Show version information (%s) and exit.\n", version);
+    printf("  -C, --clear [DIR]           Clear recap-output files in [DIR] (default: '.') and exit.\n\n");
+    printf("Filtering and Content (all filters use extended REGEX):\n");
+    printf("  -i, --include <REGEX>       Include only paths matching REGEX.\n");
+    printf("  -e, --exclude <REGEX>       Exclude any path matching REGEX.\n");
+    printf("  -I, --include-content <R>   Show content for files matching REGEX <R>.\n");
+    printf("  -E, --exclude-content <R>   Exclude content for files matching REGEX <R>.\n");
+    printf("  -g, --git [FILE]            Use .gitignore patterns for exclusions (searches upwards from cwd).\n");
+    printf("  -s, --strip <REGEX>         In content blocks, skip lines until a line matches REGEX.\n\n");
     printf("Output and Upload:\n");
-    printf("  -p, --paste [KEY]           Upload output to Gist (uses GITHUB_API_KEY env var).\n");
-    printf("  -o, --output <FILE>         Specify the output file name.\n");
-    printf("  -O, --output-dir <DIR>      Specify the output directory.\n");
+    printf("  -o, --output <FILE>         Specify the output file name (disables stdout).\n");
+    printf("  -O, --output-dir <DIR>      Specify the output directory (disables stdout).\n");
+    printf("  -p, --paste [KEY]           Upload output to Gist (uses GITHUB_API_KEY from env).\n");
 }
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx) {
