@@ -1,0 +1,1822 @@
+./
+	READOLDME.md:
+		# CTF (Context To File)
+
+		## Purpose
+
+		`ctf` is a command-line tool designed to capture the structure and content of a workspace (directory) and consolidate it into a single text file. This file can then be easily provided as context to AI models, allowing them to understand the project's layout and relevant code.
+
+		## Usage
+
+		```bash
+		./ctf [options]
+		```
+
+		By default, `ctf` traverses the current directory (`.`) and creates a timestamped output file (e.g., `ctf-output-YYYYMMDD-HHMMSS.txt`) in the current directory, listing the directory structure.
+
+		## Options
+
+		* `--help`, `-h`: Show help message and exit
+		* `--clear`: Delete previous `ctf-output` files in the current directory
+		* `--content`, `-c` `[ext1 ext2 ...]`: Include content of files with specified extensions (e.g., `c`, `h`, `py`). If no extensions are provided, includes all text files.
+		* `--include`, `-i` `[paths...]`: Include specific files or directories (default is current directory `.`)
+		* `--exclude`, `-e` `[paths...]`: Exclude specific files or directories
+		* `--git`, `-g`: Use `.gitignore` entries as exclude patterns
+		* `--dir`, `-d` `DIR`: Output directory (default is current directory)
+		* `--name`, `-n` `NAME`: Output filename (default is timestamped)
+		* `--paste`, `-p` `API_KEY`: Upload output as GitHub Gist using the provided API key
+
+		## Examples
+
+		1. **Basic structure dump:**
+
+		    ```bash
+		    ./ctf
+		    ```
+
+		2. **Include content of C/H files and specific directories, excluding build directory:**
+
+		    ```bash
+		    ./ctf -c c h -i src include tests -e build
+		    ```
+
+		3. **Use .gitignore, include Python content, save to a specific file:**
+
+		    ```bash
+		    ./ctf -g -c py -n my_project_context -d ./output
+		    ```
+
+		4. **Upload output to GitHub Gist:**
+
+		    ```bash
+		    ./ctf -c c h -p YOUR_GITHUB_TOKEN
+		    ```
+
+		5. **Clean up previous outputs:**
+
+		    ```bash
+		    ./ctf --clear
+		    ```
+
+		## Building the Project
+
+		### Dependencies
+
+		This project requires the following libraries:
+
+		* libcurl (for HTTP requests)
+		* jansson (for JSON parsing)
+
+		On Debian/Ubuntu systems, you can install these dependencies with:
+
+		```bash
+		sudo apt-get install libcurl4-openssl-dev libjansson-dev
+		```
+
+		### Build Instructions
+
+		1. Clone the repository:
+		  
+		  ```bash
+		  git clone https://github.com/trethore/Context-To-File
+		  cd Context-To-File
+		  ```
+		  
+		2. Build the project:
+		  
+		  ```bash
+		  make
+		  ```
+		  
+		  This will compile the source files and create the `ctf` executable.
+		  
+		3. To clean the build files:
+		  
+		  ```bash
+		  make clean
+		  ```
+
+		### Build Configuration
+
+		The project is compiled with the following flags:
+
+		* `-Wall -Wextra`: Enable all warnings
+		* `-std=c11`: Use C11 standard
+		* `-g`: Include debugging information
+
+		If you need to modify the compiler or flags, you can edit the variables at the top of the Makefile.
+	.gitignore:
+		obj/
+
+		recap.exe
+		recap
+		recap-output*
+		.env
+	doc/
+		recap.1:
+			.TH RECAP 1 "April 2025" "recap 1.0" "User Commands"
+			.SH NAME
+			recap \- capture the structure and content of a workspace and consolidate it into a single text output
+			.SH SYNOPSIS
+			.B recap
+			[\fIOPTION\fR]...
+			.SH DESCRIPTION
+			A command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code.
+			.SH OPTIONS
+			Mandatory arguments to long options are mandatory for short options too.
+			.TP
+			.B \-C, \-\-clear[=\fIDIR]
+			remove previous recap-output files (optionally from DIR)
+			.TP
+			.B \-c, \-\-content=\fIEXTS
+			include content of files with given the extensions
+			.I EXTS
+			is a comma-separated list of file extensions, without the leading dot
+			.TP
+			.B \-i, \-\-include=\fIPATH
+			include a specific file or directory; can be repeated
+			.TP
+			.B \-e, \-\-exclude=\fIPATH
+			exclude a specific file or directory; can be repeated
+			.TP
+			.B \-g, \-\-git
+			attemps to open the file
+			.I .gitignore
+			in the current directory and load exclusions from it
+			.TP
+			.B \-p, \-\-paste[\=\fIGIST_API_KEY]
+			upload output as GitHub Gist; if no argument is specified, it reads from the
+			.I GIST_API_KEY
+			environment variable
+			.TP
+			.B \-o, \-\-output=\fIFILE
+			output to
+			.I FILE
+			.TP
+			.B \-O, \-\-output-dir=\fIDIR
+			output a timestampped file to
+			.I DIR
+			.TP
+			.B \-h, \-\-help
+			output a help message and exit
+			.SH ENVIRONMENT
+			.RS
+			.TS
+			tab(:);
+			l l.
+			GIST_API_KEY:GitHub Gist API key; expected when \fB\-\-paste\fR is passed without an argument.
+			.TE
+			.RE
+			.SH EXIT STATUS
+			0 on success, 1 on error. Errors are printed to standard error.
+			.SH EXAMPLES
+			.RS 4
+			.TP
+			.B recap src
+			Process 'src’ directory
+			.TP
+			.B recap \-i src \-e test.txt
+			Include 'src’ and exclude 'test.txt’
+			.TP
+			.B recap \-C
+			Clear all recap-output files in the current directory
+			.TP
+			.B recap src \-c c \-o somedir/out.txt
+			Process 'src’ with content specifier 'c’ to 'somedir/out.txt’
+			.RE
+			.SH AUTHOR
+			Written by Trethore and Scover.
+			.SH REPORTING BUGS
+			Report issues at:
+			.BR https://github.com/trethore/RECAP
+			.SH SEE ALSO
+			.if !d MR .ds MR \\fB\\$1\\fR(\\$2)
+			.MR cat 1
+	README.md:
+		# RECAP - Extracts Context And Packages
+
+		## Purpose
+
+		`recap` is a command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code.
+
+		## TODO
+
+		* [X] Change `--paste` to check if an API key is provided in environment
+		* [X] Add `--output` output the generated text in a file
+		* [X] Add `--out-dir` output the generated text in a directory
+		* [X] Add a warning to `--clear` since it removes all ctf-output files
+		* [X] Remove `--name` no longer useful
+		* [X] Remove `--dir` no longer useful
+		* [X] Add `--version`
+		* [X] `--content` allow multiple options instead of custom quote separation logic (current logic is fine, but what if you want to target extensions containing quotes? it's a rabbit hole of escaping mechanisms. better let the shell handle it)
+		* [X] add non-option argument for source directory(ies?): currently it's always `.`
+		* [X] Allow custom .gitignore filename as `--git` option argument, or load it from parent directory recursively (until root) if not found. Also check if there's a library to interpret the full syntax (comment, !-lines...)
+		* [ ] Remove Herobrine
+		  
+		## Building the Project
+
+		### Dependencies
+
+		This project requires the following libraries:
+
+		* libcurl (for HTTP requests)
+		* jansson (for JSON parsing)
+
+		On Debian/Ubuntu systems, you can install these dependencies with:
+
+		```bash
+		sudo apt-get install libcurl4-openssl-dev libjansson-dev
+		```
+
+		### Build Instructions
+
+		1. Clone the repository:
+		  
+		  ```bash
+		  git clone https://github.com/trethore/RECAP.git
+		  cd RECAP
+		  ```
+		  
+		2. Build the project:
+		  
+		  ```bash
+		  make
+		  ```
+		  
+		  This will compile the source files and create the `recap` executable.
+		  
+		3. To clean the build files:
+		  
+		  ```bash
+		  make clean
+		  ```
+
+		### Build Configuration
+
+		The project is compiled with the following flags:
+
+		* `-Wall -Wextra`: Enable all warnings
+		* `-std=c11`: Use C11 standard
+		* `-g`: Include debugging information
+
+		If you need to modify the compiler or flags, you can edit the variables at the top of the Makefile.
+
+	obj/
+		args.o
+		main.o
+		utils.o
+		gist.o
+		traverse.o
+	others/
+		otherfile.txt:
+			another file
+	make.sh:
+		rm recap
+		make clean && make
+	Makefile:
+		PREFIX ?= /usr/local
+		BINDIR := $(PREFIX)/bin
+		MANDIR := $(PREFIX)/share/man/man1
+
+		CC = gcc
+		CFLAGS = -Wall -Wextra -std=gnu11 -g -D_POSIX_C_SOURCE=200809L
+		LIBS = -lcurl -ljansson
+
+		SRCDIR = src
+		OBJDIR = obj
+		EXEC = recap
+		MANPAGE = doc/recap.1
+
+		SOURCES = $(wildcard $(SRCDIR)/*.c) 
+		OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
+
+		all: $(EXEC)
+
+		# Link target
+		$(EXEC): $(OBJECTS)
+			$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
+
+		$(OBJDIR)/%.o: $(SRCDIR)/%.c $(SRCDIR)/recap.h | $(OBJDIR)
+			$(CC) $(CFLAGS) -c $< -o $@
+
+		$(OBJDIR):
+			@mkdir -p $(OBJDIR)
+
+		clean:
+			rm -rf $(OBJDIR) $(EXEC)
+
+		install: $(EXEC) $(MANPAGE)
+			install -Dm755 $(EXEC) $(BINDIR)/$(EXEC)
+			install -Dm644 $(MANPAGE) $(MANDIR)/$(EXEC).1
+			@echo "$(EXEC): installed to $(BINDIR), manpage to $(MANDIR)"
+
+		uninstall:
+			rm -f $(BINDIR)/$(EXEC)
+			rm -f $(MANDIR)/$(MANPAGE).1
+			@echo "$(EXEC): uninstalled"
+
+		.PHONY: all clean install uninstall
+	src/
+		main.c:
+			#define _POSIX_C_SOURCE 200809L
+			#include "recap.h"
+			#include <curl/curl.h>
+			#include <sys/stat.h>
+			#include <string.h>
+			#include <stdlib.h>
+			#include <stdio.h>
+			#include <regex.h>
+
+			const char* RECAP_VERSION = "2.0.0";
+
+			int main(int argc, char* argv[]) {
+			    recap_context ctx = { 0 };
+			    ctx.version = RECAP_VERSION;
+			    ctx.output_stream = NULL;
+
+			    int result = 0;
+			    char* allocated_output_filename = NULL;
+
+			    if (curl_global_init(CURL_GLOBAL_ALL) != CURLE_OK) {
+			        fprintf(stderr, "Error: Failed to initialize libcurl.\n");
+			        return 1;
+			    }
+
+			    parse_arguments(argc, argv, &ctx);
+			    ctx.version = RECAP_VERSION;
+
+			    if (ctx.output.output_name[0] == '\0' && ctx.output.output_dir[0] == '\0') {
+			        ctx.output.use_stdout = 1;
+			        ctx.output_stream = stdout;
+			        ctx.output.relative_output_path[0] = '\0';
+			    }
+			    else {
+			        ctx.output.use_stdout = 0;
+			        if (generate_output_filename(&ctx.output) != 0) {
+			            result = 1;
+			            goto cleanup;
+			        }
+
+			        ctx.output_stream = fopen(ctx.output.calculated_output_path, "w");
+			        if (!ctx.output_stream) {
+			            perror("fopen output file");
+			            fprintf(stderr, "Error: Could not open output file: %s\n", ctx.output.calculated_output_path);
+			            result = 1;
+			            goto cleanup;
+			        }
+
+			        allocated_output_filename = ctx.output.calculated_output_path;
+			    }
+
+			    int processed_something = 0;
+			    for (int i = 0; i < ctx.start_path_count; i++) {
+			        start_traversal(ctx.start_paths[i], &ctx);
+			    }
+
+			    if (ctx.output_stream) {
+			        fflush(ctx.output_stream);
+			    }
+
+			    if (!ctx.output.use_stdout && ctx.output_stream) {
+			        long output_size = ftell(ctx.output_stream);
+			        if (output_size > 0) {
+			            processed_something = 1;
+			        }
+			        else if (output_size == 0) {
+			            processed_something = 0;
+			        }
+			        else {
+			            perror("ftell output file");
+			            processed_something = 0;
+			        }
+			    }
+			    else if (ctx.output.use_stdout) {
+			        if (ctx.start_path_count > 0) processed_something = 1;
+			    }
+
+			    if (!ctx.output.use_stdout && ctx.output_stream) {
+			        fclose(ctx.output_stream);
+			        ctx.output_stream = NULL;
+			    }
+
+			    if (processed_something) {
+			        if (ctx.gist_api_key != NULL) {
+			            if (!ctx.gist_api_key || ctx.gist_api_key[0] == '\0') {
+			                fprintf(stderr, "Error: Gist upload requested (--paste), but no API key provided via argument or GITHUB_API_KEY environment variable.\n");
+			                if (allocated_output_filename) {
+			                    fprintf(stderr, "Output saved locally to %s\n", allocated_output_filename);
+			                }
+			                result = 1;
+			            }
+			            else if (ctx.output.use_stdout) {
+			                fprintf(stderr, "Warning: Cannot upload to Gist when outputting to stdout. Output was printed above.\n");
+			            }
+			            else {
+			                printf("Uploading to Gist...\n");
+			                char* gist_url = upload_to_gist(allocated_output_filename, ctx.gist_api_key);
+
+			                if (gist_url) {
+			                    printf("Output uploaded to: %s\n", gist_url);
+			                    free(gist_url);
+			                    if (remove(allocated_output_filename) != 0) {
+			                        perror("remove local output file after Gist upload");
+			                        fprintf(stderr, "Warning: Failed to remove local file %s after Gist upload.\n", allocated_output_filename);
+			                    }
+			                    allocated_output_filename = NULL;
+			                }
+			                else {
+			                    fprintf(stderr, "Failed to upload to Gist. Output saved locally to %s\n", allocated_output_filename);
+			                    result = 1;
+			                }
+			            }
+			        }
+			        else {
+			            if (!ctx.output.use_stdout && allocated_output_filename) {
+			                printf("Output written to %s\n", allocated_output_filename);
+			            }
+			        }
+			    }
+			    else {
+			        if (!ctx.output.use_stdout && allocated_output_filename) {
+			            fprintf(stderr, "Info: No files processed or written. Removing empty output file: %s\n", allocated_output_filename);
+			            remove(allocated_output_filename);
+			            allocated_output_filename = NULL;
+			        }
+			        else if (ctx.output.use_stdout) {
+			            fprintf(stderr, "Info: No files matched the criteria to be processed or written to stdout.\n");
+			        }
+			    }
+
+			cleanup:
+			    if (!ctx.output.use_stdout && ctx.output_stream) {
+			        fclose(ctx.output_stream);
+			        ctx.output_stream = NULL;
+			    }
+
+			    free_regex_ctx(&ctx.include_filters);
+			    free_regex_ctx(&ctx.exclude_filters);
+			    free_regex_ctx(&ctx.content_include_filters);
+			    free_regex_ctx(&ctx.content_exclude_filters);
+			    if (ctx.strip_regex_is_set) {
+			        regfree(&ctx.strip_regex);
+			    }
+
+			    curl_global_cleanup();
+			    return result;
+			}
+		gist.c:
+			#define _POSIX_C_SOURCE 200809L
+			#include "recap.h"
+			#include <curl/curl.h>
+			#include <sys/stat.h>
+			#include <jansson.h>
+
+			struct MemoryStruct {
+			    char* memory;
+			    size_t size;
+			};
+
+			static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, void* userp) {
+			    size_t realsize = size * nmemb;
+			    struct MemoryStruct* mem = (struct MemoryStruct*)userp;
+
+			    if (mem->size + realsize < mem->size) {
+			        fprintf(stderr, "Gist upload: Memory size overflow detected in callback.\n");
+			        return 0;
+			    }
+
+			    char* ptr = realloc(mem->memory, mem->size + realsize + 1);
+			    if (ptr == NULL) {
+			        fprintf(stderr, "Gist upload: not enough memory (realloc returned NULL)\n");
+			        return 0;
+			    }
+
+			    mem->memory = ptr;
+			    memcpy(&(mem->memory[mem->size]), contents, realsize);
+			    mem->size += realsize;
+			    mem->memory[mem->size] = 0;
+
+			    return realsize;
+			}
+
+			char* upload_to_gist(const char* filepath, const char* github_token) {
+			    if (!github_token || github_token[0] == '\0') {
+			        fprintf(stderr, "Gist upload error: GitHub API token is missing or empty.\n");
+			        return NULL;
+			    }
+
+			    struct stat st;
+			    if (stat(filepath, &st) != 0) {
+			        perror("stat file for gist upload");
+			        fprintf(stderr, "Gist upload error: Cannot stat input file: %s\n", filepath);
+			        return NULL;
+			    }
+
+			    if (!S_ISREG(st.st_mode)) {
+			        fprintf(stderr, "Gist upload error: Input path is not a regular file: %s\n", filepath);
+			        return NULL;
+			    }
+
+			    long filesize = st.st_size;
+
+			    if (filesize <= 0) {
+			        fprintf(stderr, "Gist upload info: Input file '%s' is empty or invalid size (%ld). Skipping upload.\n", filepath, filesize);
+			        return NULL;
+			    }
+
+			    long max_filesize = 10 * 1024 * 1024; // 10 MB limit
+			    if (filesize > max_filesize) {
+			        fprintf(stderr, "Gist upload error: File '%s' is too large (%ld bytes > %ld bytes limit). Skipping upload.\n", filepath, filesize, max_filesize);
+			        return NULL;
+			    }
+
+			    FILE* file = fopen(filepath, "rb");
+			    if (!file) {
+			        perror("fopen for gist upload");
+			        fprintf(stderr, "Gist upload error: Cannot open file: %s\n", filepath);
+			        return NULL;
+			    }
+
+			    char* file_content = malloc(filesize + 1);
+			    if (!file_content) {
+			        fclose(file);
+			        fprintf(stderr, "Gist upload error: Memory allocation failed for file content (%ld bytes).\n", filesize);
+			        return NULL;
+			    }
+
+			    size_t bytes_read = fread(file_content, 1, filesize, file);
+			    if (bytes_read != (size_t)filesize || ferror(file)) {
+			        fprintf(stderr, "Gist upload error: Error reading file %s (read %zu bytes, expected %ld, ferror: %d)\n",
+			            filepath, bytes_read, filesize, ferror(file));
+			        free(file_content);
+			        fclose(file);
+			        return NULL;
+			    }
+			    file_content[filesize] = '\0';
+			    fclose(file);
+
+			    const char* filename_only = strrchr(filepath, '/');
+			    filename_only = filename_only ? filename_only + 1 : filepath;
+
+			    json_t* root = json_object();
+			    json_t* files_obj = json_object();
+			    json_t* file_obj = json_object();
+			    json_error_t error;
+
+			    if (!root || !files_obj || !file_obj) {
+			        fprintf(stderr, "Gist upload error: Failed to create JSON objects.\n");
+			        free(file_content);
+			        json_decref(root);
+			        json_decref(files_obj);
+			        json_decref(file_obj);
+			        return NULL;
+			    }
+
+			    if (json_object_set_new(file_obj, "content", json_string(file_content)) != 0 ||
+			        json_object_set_new(files_obj, filename_only, file_obj) != 0 ||
+			        json_object_set_new(root, "description", json_string("Recap output")) != 0 ||
+			        json_object_set_new(root, "public", json_false()) != 0 ||
+			        json_object_set_new(root, "files", files_obj) != 0) {
+			        fprintf(stderr, "Gist upload error: Failed to populate JSON object.\n");
+			        free(file_content);
+			        json_decref(root);
+			        return NULL;
+			    }
+
+			    free(file_content);
+
+			    char* json_payload = json_dumps(root, JSON_COMPACT);
+			    json_decref(root);
+
+			    if (!json_payload) {
+			        fprintf(stderr, "Gist upload error: Failed to dump JSON payload.\n");
+			        return NULL;
+			    }
+
+			    CURL* curl = curl_easy_init();
+			    struct curl_slist* headers = NULL;
+			    struct MemoryStruct chunk = { .memory = NULL, .size = 0 };
+			    char* html_url = NULL;
+			    CURLcode res = CURLE_OK;
+
+			    if (!curl) {
+			        fprintf(stderr, "Gist upload error: curl_easy_init() failed.\n");
+			        free(json_payload);
+			        return NULL;
+			    }
+
+			    chunk.memory = malloc(1);
+			    if (!chunk.memory) {
+			        fprintf(stderr, "Gist upload error: Memory allocation failed for response chunk.\n");
+			        free(json_payload);
+			        curl_easy_cleanup(curl);
+			        return NULL;
+			    }
+			    chunk.memory[0] = '\0';
+			    chunk.size = 0;
+
+			    char auth_header[256];
+			    snprintf(auth_header, sizeof(auth_header), "Authorization: token %s", github_token);
+
+			    headers = curl_slist_append(headers, auth_header);
+			    headers = curl_slist_append(headers, "Content-Type: application/json");
+			    headers = curl_slist_append(headers, "Accept: application/vnd.github.v3+json");
+			    headers = curl_slist_append(headers, "User-Agent: recap-c-tool/1.0");
+
+			    curl_easy_setopt(curl, CURLOPT_URL, "https://api.github.com/gists");
+			    curl_easy_setopt(curl, CURLOPT_POSTFIELDS, json_payload);
+			    curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+			    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
+			    curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&chunk);
+			    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+			    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+			    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+
+			    res = curl_easy_perform(curl);
+
+			    if (res != CURLE_OK) {
+			        fprintf(stderr, "Gist upload error: curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+			        long http_code = 0;
+			        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &http_code);
+			        fprintf(stderr, "Gist upload error: HTTP response code: %ld\n", http_code);
+			        if (chunk.size > 0) {
+			            fprintf(stderr, "Gist Response Body: %.*s\n", (int)chunk.size, chunk.memory);
+			        }
+			    }
+			    else {
+			        json_t* response_json = json_loadb(chunk.memory, chunk.size, 0, &error);
+			        if (!response_json) {
+			            fprintf(stderr, "Gist upload warning: Failed to parse JSON response: %s (line %d, col %d)\n", error.text, error.line, error.column);
+			            fprintf(stderr, "Gist Response Body: %.*s\n", (int)chunk.size, chunk.memory);
+			        }
+			        else {
+			            json_t* url_json = json_object_get(response_json, "html_url");
+			            if (json_is_string(url_json)) {
+			                const char* url_str = json_string_value(url_json);
+			                size_t url_len = strlen(url_str);
+			                html_url = malloc(url_len + 1);
+			                if (html_url) {
+			                    strcpy(html_url, url_str);
+			                }
+			                else {
+			                    perror("malloc for Gist URL");
+			                }
+
+			            }
+			            else {
+			                fprintf(stderr, "Gist upload warning: 'html_url' not found or not a string in response.\n");
+			                char* resp_str = json_dumps(response_json, JSON_INDENT(2));
+			                if (resp_str) {
+			                    fprintf(stderr, "Gist Full Response:\n%s\n", resp_str);
+			                    free(resp_str);
+			                }
+			            }
+			            json_decref(response_json);
+			        }
+			    }
+
+			    free(chunk.memory);
+			    free(json_payload);
+			    curl_slist_free_all(headers);
+			    curl_easy_cleanup(curl);
+
+			    return html_url;
+			}
+		traverse.c:
+			#define _POSIX_C_SOURCE 200809L
+			#include "recap.h"
+			#include <limits.h>
+			#include <stdlib.h>
+			#include <fnmatch.h>
+			#include <string.h>
+			#include <unistd.h>
+			#include <sys/stat.h>
+			#include <dirent.h>
+			#include <errno.h>
+			#include <regex.h>
+
+			#ifndef DT_UNKNOWN
+			#define DT_UNKNOWN 0
+			#endif
+			#ifndef DT_DIR
+			#define DT_DIR 4
+			#endif
+			#ifndef DT_REG
+			#define DT_REG 8
+			#endif
+			#ifndef DT_LNK
+			#define DT_LNK 10
+			#endif
+
+			int has_visitable_children(const char* base_path, const recap_context* ctx);
+
+			static int match_regex_list(const regex_ctx* ctx, const char* str) {
+			    for (int i = 0; i < ctx->count; i++) {
+			        if (regexec(&ctx->compiled[i], str, 0, NULL, 0) == 0) {
+			            return 1;
+			        }
+			    }
+			    return 0;
+			}
+
+			static int match_fnmatch_list(const fnmatch_ctx* ctx, const char* path_to_check) {
+			    for (int i = 0; i < ctx->count; i++) {
+			        const char* pattern = ctx->patterns[i];
+			        if (fnmatch(pattern, path_to_check, FNM_PATHNAME | FNM_PERIOD) == 0) {
+			            return 1;
+			        }
+			        size_t pattern_len = strlen(pattern);
+			        if (pattern_len > 0 && pattern[pattern_len - 1] == '/') {
+			            char dir_pattern[MAX_PATH_SIZE];
+			            strncpy(dir_pattern, pattern, pattern_len - 1);
+			            dir_pattern[pattern_len - 1] = '\0';
+			            if (fnmatch(dir_pattern, path_to_check, FNM_PATHNAME | FNM_PERIOD) == 0) {
+			                struct stat st;
+			                if (stat(path_to_check, &st) == 0 && S_ISDIR(st.st_mode)) {
+			                    return 1;
+			                }
+			            }
+			        }
+			    }
+			    return 0;
+			}
+
+			static int should_be_skipped(const char* rel_path, const char* full_path, const recap_context* ctx) {
+			    if (!ctx->output.use_stdout && ctx->output.relative_output_path[0] != '\0') {
+			        if (strcmp(rel_path, ctx->output.relative_output_path) == 0) {
+			            return 1;
+			        }
+			    }
+
+			    if (match_fnmatch_list(&ctx->fnmatch_exclude_filters, rel_path)) {
+			        return 1;
+			    }
+
+			    if (ctx->exclude_filters.count > 0 && match_regex_list(&ctx->exclude_filters, rel_path)) {
+			        return 1;
+			    }
+
+			    if (ctx->include_filters.count > 0) {
+			        if (match_regex_list(&ctx->include_filters, rel_path)) {
+			            return 0;
+			        }
+			        char temp_path[MAX_PATH_SIZE];
+			        strncpy(temp_path, rel_path, sizeof(temp_path));
+			        temp_path[sizeof(temp_path) - 1] = '\0';
+			        char* last_slash = strrchr(temp_path, '/');
+			        while (last_slash) {
+			            *last_slash = '\0';
+			            if (strlen(temp_path) > 0 && match_regex_list(&ctx->include_filters, temp_path)) {
+			                return 0;
+			            }
+			            last_slash = strrchr(temp_path, '/');
+			        }
+
+			        struct stat st;
+			        if (stat(full_path, &st) != 0) {
+			            fprintf(stderr, "Warning: Could not stat path for include check: %s. Skipping.\n", full_path);
+			            return 1;
+			        }
+			        return S_ISDIR(st.st_mode) ? 0 : 1;
+			    }
+
+			    return 0;
+			}
+
+			int should_show_content(const char* rel_path, const char* full_path, const recap_context* ctx) {
+			    if (ctx->content_exclude_filters.count > 0 && match_regex_list(&ctx->content_exclude_filters, rel_path)) {
+			        return 0;
+			    }
+			    if (ctx->content_include_filters.count > 0) {
+			        if (match_regex_list(&ctx->content_include_filters, rel_path)) {
+			            return is_text_file(full_path);
+			        }
+			    }
+			    return 0;
+			}
+
+			void print_indent(int depth, FILE* output) {
+			    for (int i = 0; i < depth; i++) {
+			        fputc('\t', output);
+			    }
+			}
+
+			void write_file_content_inline(const char* filepath, int depth, recap_context* ctx) {
+			    FILE* f = fopen(filepath, "r");
+			    if (!f) {
+			        fprintf(stderr, "Warning: Could not open file %s to read content: %s\n", filepath, strerror(errno));
+			        print_indent(depth, ctx->output_stream);
+			        fprintf(ctx->output_stream, "[Error reading file content]\n");
+			        return;
+			    }
+			    char line[4096];
+			    if (ctx->strip_regex_is_set) {
+			        int header_found = 0;
+			        while (fgets(line, sizeof(line), f)) {
+			            if (regexec(&ctx->strip_regex, line, 0, NULL, 0) == 0) {
+			                header_found = 1;
+			                break;
+			            }
+			        }
+			        if (!header_found) {
+			            fclose(f);
+			            return;
+			        }
+			    }
+			    int previous_line_was_blank = 0;
+			    while (fgets(line, sizeof(line), f)) {
+			        size_t len = strlen(line);
+			        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
+			            line[--len] = '\0';
+			        }
+			        if (len == 0) {
+			            if (!previous_line_was_blank) {
+			                fputc('\n', ctx->output_stream);
+			                previous_line_was_blank = 1;
+			            }
+			        }
+			        else {
+			            previous_line_was_blank = 0;
+			            print_indent(depth, ctx->output_stream);
+			            fputs(line, ctx->output_stream);
+			            fputc('\n', ctx->output_stream);
+			        }
+			    }
+			    if (ferror(f)) {
+			        fprintf(stderr, "Warning: I/O error reading content from %s\n", filepath);
+			    }
+			    fclose(f);
+			}
+
+			static void remove_dot_slash_prefix(char* str) {
+			    if (strncmp(str, "./", 2) == 0) {
+			        memmove(str, str + 2, strlen(str) - 1);
+			    }
+			}
+
+			void get_relative_path(const char* full_path, char* rel_path_out, size_t size) {
+			    char normalized_full_path[MAX_PATH_SIZE];
+			    char cwd[MAX_PATH_SIZE];
+
+			    strncpy(normalized_full_path, full_path, sizeof(normalized_full_path) - 1);
+			    normalized_full_path[sizeof(normalized_full_path) - 1] = '\0';
+			    normalize_path(normalized_full_path);
+
+			    if (strcmp(normalized_full_path, ".") == 0) {
+			        snprintf(rel_path_out, size, ".");
+			        return;
+			    }
+
+			    if (normalized_full_path[0] != '/') {
+			        strncpy(rel_path_out, normalized_full_path, size - 1);
+			        rel_path_out[size - 1] = '\0';
+			        remove_dot_slash_prefix(rel_path_out);
+			        if (rel_path_out[0] == '\0') {
+			            strcpy(rel_path_out, ".");
+			        }
+			        return;
+			    }
+
+			    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+			        perror("getcwd in get_relative_path");
+			        strncpy(rel_path_out, normalized_full_path, size - 1);
+			        rel_path_out[size - 1] = '\0';
+			        return;
+			    }
+			    normalize_path(cwd);
+
+			    size_t cwd_len = strlen(cwd);
+
+			    if (strcmp(cwd, "/") == 0) {
+			        if (strncmp(normalized_full_path, "/", 1) == 0 && strlen(normalized_full_path) > 1) {
+			            snprintf(rel_path_out, size, "%s", normalized_full_path + 1);
+			        }
+			        else {
+			            snprintf(rel_path_out, size, ".");
+			        }
+			        return;
+			    }
+
+			    if (strncmp(normalized_full_path, cwd, cwd_len) == 0 &&
+			        (normalized_full_path[cwd_len] == '/' || normalized_full_path[cwd_len] == '\0')) {
+			        const char* relative_part = normalized_full_path + cwd_len;
+			        if (*relative_part == '/') {
+			            relative_part++;
+			        }
+			        if (*relative_part == '\0') {
+			            snprintf(rel_path_out, size, ".");
+			        }
+			        else {
+			            snprintf(rel_path_out, size, "%s", relative_part);
+			        }
+			        return;
+			    }
+
+			    strncpy(rel_path_out, normalized_full_path, size - 1);
+			    rel_path_out[size - 1] = '\0';
+			}
+
+			int has_visitable_children(const char* base_path, const recap_context* ctx) {
+			    DIR* dir = opendir(base_path);
+			    if (!dir) return 0;
+			    struct dirent* entry;
+			    int found = 0;
+			    while ((entry = readdir(dir)) != NULL) {
+			        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+			        char full_path[MAX_PATH_SIZE];
+			        snprintf(full_path, sizeof(full_path), "%s/%s", base_path, entry->d_name);
+			        char rel_path[MAX_PATH_SIZE];
+			        get_relative_path(full_path, rel_path, sizeof(rel_path));
+			        if (should_be_skipped(rel_path, full_path, ctx)) continue;
+			        struct stat st;
+			        if (lstat(full_path, &st) == 0) {
+			            if (S_ISDIR(st.st_mode)) {
+			                if (has_visitable_children(full_path, ctx)) {
+			                    found = 1;
+			                    break;
+			                }
+			            }
+			            else {
+			                found = 1;
+			                break;
+			            }
+			        }
+			    }
+			    closedir(dir);
+			    return found;
+			}
+
+			int start_traversal(const char* initial_path, recap_context* ctx) {
+			    char path_normalized[MAX_PATH_SIZE], rel_path[MAX_PATH_SIZE];
+			    strncpy(path_normalized, initial_path, sizeof(path_normalized) - 1);
+			    path_normalized[sizeof(path_normalized) - 1] = '\0';
+			    normalize_path(path_normalized);
+			    get_relative_path(path_normalized, rel_path, sizeof(rel_path));
+			    if (should_be_skipped(rel_path, path_normalized, ctx)) {
+			        return 0;
+			    }
+			    struct stat st;
+			    if (stat(path_normalized, &st) != 0) {
+			        perror("stat include path");
+			        fprintf(stderr, "Warning: Could not stat start path: %s. Skipping.\n", initial_path);
+			        return 0;
+			    }
+			    const char* basename_part = strrchr(path_normalized, '/');
+			    basename_part = basename_part ? basename_part + 1 : path_normalized;
+			    if (S_ISDIR(st.st_mode)) {
+			        if (strcmp(basename_part, ".") != 0 || strcmp(initial_path, ".") == 0 || strcmp(initial_path, "./") == 0) {
+			            fprintf(ctx->output_stream, "%s/\n", basename_part);
+			        }
+			        traverse_directory(path_normalized, 1, ctx);
+			    }
+			    else if (S_ISREG(st.st_mode)) {
+			        if (should_show_content(rel_path, path_normalized, ctx)) {
+			            fprintf(ctx->output_stream, "%s:\n", basename_part);
+			            write_file_content_inline(path_normalized, 1, ctx);
+			        }
+			        else {
+			            fprintf(ctx->output_stream, "%s\n", basename_part);
+			        }
+			    }
+			    else {
+			        fprintf(stderr, "Warning: Start path %s is not a regular file or directory. Skipping.\n", initial_path);
+			    }
+			    return 0;
+			}
+
+			void traverse_directory(const char* base_path, int depth, recap_context* ctx) {
+			    DIR* dir = opendir(base_path);
+			    if (!dir) {
+			        fprintf(stderr, "Warning: Could not open directory %s: %s\n", base_path, strerror(errno));
+			        return;
+			    }
+			    struct dirent* entry;
+			    while ((entry = readdir(dir)) != NULL) {
+			        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) continue;
+			        char full_path[MAX_PATH_SIZE];
+			        if (snprintf(full_path, sizeof(full_path), "%s/%s", base_path, entry->d_name) >= (int)sizeof(full_path)) {
+			            fprintf(stderr, "Warning: Path too long, skipping entry: %s/%s\n", base_path, entry->d_name);
+			            continue;
+			        }
+			        char rel_path[MAX_PATH_SIZE];
+			        get_relative_path(full_path, rel_path, sizeof(rel_path));
+			        if (should_be_skipped(rel_path, full_path, ctx)) continue;
+			        struct stat st;
+			        if (lstat(full_path, &st) != 0) {
+			            fprintf(stderr, "Warning: Could not lstat entry %s: %s. Skipping.\n", full_path, strerror(errno));
+			            continue;
+			        }
+			        int is_dir = S_ISDIR(st.st_mode), is_reg = S_ISREG(st.st_mode), is_link = S_ISLNK(st.st_mode);
+
+			        if (is_dir) {
+			            if (has_visitable_children(full_path, ctx)) {
+			                print_indent(depth, ctx->output_stream);
+			                fprintf(ctx->output_stream, "%s/\n", entry->d_name);
+			                traverse_directory(full_path, depth + 1, ctx);
+			            }
+			        }
+			        else {
+			            print_indent(depth, ctx->output_stream);
+			            if (is_link) {
+			                fprintf(ctx->output_stream, "%s@\n", entry->d_name);
+			            }
+			            else if (is_reg) {
+			                if (should_show_content(rel_path, full_path, ctx)) {
+			                    fprintf(ctx->output_stream, "%s:\n", entry->d_name);
+			                    write_file_content_inline(full_path, depth + 1, ctx);
+			                }
+			                else {
+			                    fprintf(ctx->output_stream, "%s\n", entry->d_name);
+			                }
+			            }
+			        }
+			    }
+			    closedir(dir);
+			}
+		utils.c:
+			#define _POSIX_C_SOURCE 200809L
+			#include "recap.h"
+			#include <ctype.h>
+			#include <stdio.h>
+			#include <stdlib.h>
+			#include <string.h>
+			#include <time.h>
+			#include <errno.h>
+			#include <sys/stat.h>
+
+			int is_text_file(const char* full_path) {
+			    FILE* file = fopen(full_path, "rb");
+			    if (!file) {
+			        perror("fopen in is_text_file");
+			        return 0;
+			    }
+
+			    unsigned char buffer[1024];
+			    size_t bytes_read = fread(buffer, 1, sizeof(buffer), file);
+
+			    if (ferror(file)) {
+			        fprintf(stderr, "Warning: I/O error reading %s\n", full_path);
+			        fclose(file);
+			        return 0;
+			    }
+			    fclose(file);
+
+			    if (bytes_read == 0) {
+			        return 1;
+			    }
+
+			    for (size_t i = 0; i < bytes_read; i++) {
+			        if (buffer[i] == '\0') {
+			            return 0;
+			        }
+			    }
+
+			    return 1;
+			}
+
+			void normalize_path(char* path) {
+			    if (!path) return;
+
+			    size_t n = strlen(path);
+			    if (n == 0) {
+			        strcpy(path, ".");
+			        return;
+			    }
+
+			    char* result = path;
+			    size_t write_idx = 0;
+			    size_t read_idx = 0;
+			    int is_absolute = (path[0] == '/');
+			    int segments = 0;
+
+			    if (is_absolute) {
+			        result[write_idx++] = '/';
+			        read_idx++;
+			        while (read_idx < n && (path[read_idx] == '/' || path[read_idx] == '\\')) {
+			            read_idx++;
+			        }
+			    }
+
+			    while (read_idx < n) {
+			        if (path[read_idx] == '/' || path[read_idx] == '\\') {
+			            while (read_idx < n && (path[read_idx] == '/' || path[read_idx] == '\\')) {
+			                read_idx++;
+			            }
+			            if (write_idx > 0 && result[write_idx - 1] != '/') {
+			                if (write_idx == 1 && is_absolute) {
+			                }
+			                else {
+			                    result[write_idx++] = '/';
+			                }
+			            }
+			            continue;
+			        }
+
+			        if (path[read_idx] == '.' && (read_idx + 1 == n || path[read_idx + 1] == '/' || path[read_idx + 1] == '\\')) {
+			            read_idx++;
+			            while (read_idx < n && (path[read_idx] == '/' || path[read_idx] == '\\')) {
+			                read_idx++;
+			            }
+			            continue;
+			        }
+
+			        if (path[read_idx] == '.' && read_idx + 1 < n && path[read_idx + 1] == '.' &&
+			            (read_idx + 2 == n || path[read_idx + 2] == '/' || path[read_idx + 2] == '\\')) {
+			            read_idx += 2;
+			            while (read_idx < n && (path[read_idx] == '/' || path[read_idx] == '\\')) {
+			                read_idx++;
+			            }
+
+			            if (write_idx > 0) {
+			                if (result[write_idx - 1] == '/') {
+			                    write_idx--;
+			                }
+
+			                size_t backtrack_limit = is_absolute ? 1 : 0;
+			                while (write_idx > backtrack_limit && result[write_idx - 1] != '/') {
+			                    write_idx--;
+			                }
+			                if ((!is_absolute && segments > 0) || (is_absolute && write_idx > 1)) {
+			                    if (write_idx > backtrack_limit && result[write_idx - 1] == '/') {
+			                        write_idx--;
+			                    }
+			                    segments--;
+			                }
+			                else if (!is_absolute && segments == 0) {
+			                    if (write_idx > 0 && result[write_idx - 1] != '/') result[write_idx++] = '/';
+			                    result[write_idx++] = '.';
+			                    result[write_idx++] = '.';
+			                    segments++;
+			                }
+			                if (write_idx > backtrack_limit && result[write_idx - 1] != '/') {
+			                    result[write_idx++] = '/';
+			                }
+			            }
+			            else if (!is_absolute) {
+			                result[write_idx++] = '.';
+			                result[write_idx++] = '.';
+			                if (read_idx < n) result[write_idx++] = '/';
+			                segments++;
+			            }
+			            continue;
+			        }
+
+			        if (write_idx > 0 && result[write_idx - 1] != '/') {
+			            if (write_idx == 1 && is_absolute) {
+			            }
+			            else {
+			                result[write_idx++] = '/';
+			            }
+			        }
+			        while (read_idx < n && path[read_idx] != '/' && path[read_idx] != '\\') {
+			            result[write_idx++] = path[read_idx++];
+			        }
+			        segments++;
+			    }
+
+			    if (write_idx > 1 && result[write_idx - 1] == '/' && is_absolute) {
+			        write_idx--;
+			    }
+			    else if (write_idx > 0 && result[write_idx - 1] == '/' && !is_absolute) {
+			        write_idx--;
+			    }
+
+			    if (write_idx == 0) {
+			        result[write_idx++] = '.';
+			    }
+
+			    result[write_idx] = '\0';
+			}
+
+			int generate_output_filename(output_ctx* ctx) {
+			    char combined_path[MAX_PATH_SIZE];
+			    const char* dir = ".";
+
+			    if (strlen(ctx->output_dir) > 0) {
+			        dir = ctx->output_dir;
+			        struct stat dir_st;
+			        if (stat(dir, &dir_st) != 0) {
+			            if (errno == ENOENT) {
+			                fprintf(stderr, "Error: Output directory '%s' does not exist.\n", dir);
+			            }
+			            else {
+			                perror("stat output directory");
+			                fprintf(stderr, "Error: Cannot access output directory '%s'.\n", dir);
+			            }
+			            return -1;
+			        }
+			        if (!S_ISDIR(dir_st.st_mode)) {
+			            fprintf(stderr, "Error: Specified output directory path '%s' is not a directory.\n", dir);
+			            return -1;
+			        }
+			    }
+
+			    if (strlen(ctx->output_name) > 0) {
+			        int len = snprintf(combined_path, sizeof(combined_path), "%s/%s", dir, ctx->output_name);
+			        if (len < 0 || (size_t)len >= sizeof(combined_path)) {
+			            fprintf(stderr, "Error: Constructed output path is too long or encoding error (%s/%s).\n", dir, ctx->output_name);
+			            return -1;
+			        }
+			    }
+			    else {
+			        time_t now = time(NULL);
+			        struct tm* t = localtime(&now);
+			        char timestamp[64];
+			        if (!t || strftime(timestamp, sizeof(timestamp), "recap-output-%Y%m%d-%H%M%S.txt", t) == 0) {
+			            fprintf(stderr, "Error: Failed to generate timestamp for output filename.\n");
+			            return -1;
+			        }
+			        int len = snprintf(combined_path, sizeof(combined_path), "%s/%s", dir, timestamp);
+			        if (len < 0 || (size_t)len >= sizeof(combined_path)) {
+			            fprintf(stderr, "Error: Constructed output path is too long or encoding error (%s/%s).\n", dir, timestamp);
+			            return -1;
+			        }
+			    }
+
+			    normalize_path(combined_path);
+
+			    if (strcmp(combined_path, ".") == 0 || strcmp(combined_path, "..") == 0 || strcmp(combined_path, "/") == 0) {
+			        fprintf(stderr, "Error: Invalid output filename generated: '%s'. Resolves to a directory-like path.\n", combined_path);
+			        return -1;
+			    }
+
+			    struct stat st;
+			    if (stat(combined_path, &st) == 0 && S_ISDIR(st.st_mode)) {
+			        fprintf(stderr, "Error: Output path '%s' points to an existing directory. Please specify a file path.\n", combined_path);
+			        return -1;
+			    }
+
+			    strncpy(ctx->calculated_output_path, combined_path, MAX_PATH_SIZE - 1);
+			    ctx->calculated_output_path[MAX_PATH_SIZE - 1] = '\0';
+
+			    get_relative_path(ctx->calculated_output_path, ctx->relative_output_path, sizeof(ctx->relative_output_path));
+
+			    return 0;
+			}
+		recap.h:
+			#ifndef RECAP_H
+			#define RECAP_H
+
+			#include <stdio.h>
+			#include <stdlib.h>
+			#include <string.h>
+			#include <time.h>
+			#include <dirent.h>
+			#include <sys/stat.h>
+			#include <unistd.h>
+			#include <ctype.h>
+			#include <fnmatch.h>
+			#include <limits.h>
+			#include <regex.h>
+
+			#define MAX_PATH_SIZE 1024
+			#define MAX_PATTERNS 1024
+			#define MAX_GITIGNORE_ENTRIES 1024
+
+			typedef struct {
+			    regex_t compiled[MAX_PATTERNS];
+			    int count;
+			} regex_ctx;
+
+			typedef struct {
+			    const char* patterns[MAX_PATTERNS];
+			    int count;
+			} fnmatch_ctx;
+
+			typedef struct {
+			    char output_dir[MAX_PATH_SIZE];
+			    char output_name[MAX_PATH_SIZE];
+			    char calculated_output_path[MAX_PATH_SIZE];
+			    char relative_output_path[MAX_PATH_SIZE];
+			    int use_stdout;
+			} output_ctx;
+
+			typedef struct {
+			    const char* start_paths[MAX_PATTERNS];
+			    int start_path_count;
+
+			    regex_ctx include_filters;
+			    regex_ctx exclude_filters;
+			    regex_ctx content_include_filters;
+			    regex_ctx content_exclude_filters;
+
+			    fnmatch_ctx fnmatch_exclude_filters;
+			    char gitignore_entries[MAX_GITIGNORE_ENTRIES][MAX_PATH_SIZE];
+			    int gitignore_entry_count;
+
+			    regex_t strip_regex;
+			    int strip_regex_is_set;
+
+			    output_ctx output;
+			    const char* gist_api_key;
+			    const char* version;
+			    FILE* output_stream;
+			} recap_context;
+
+			void parse_arguments(int argc, char* argv[], recap_context* ctx);
+			void load_gitignore(recap_context* ctx, const char* gitignore_filename);
+			void clear_recap_output_files(const char* target_dir);
+			void free_regex_ctx(regex_ctx* ctx);
+
+			void traverse_directory(const char* base_path, int depth, recap_context* ctx);
+			void print_indent(int depth, FILE* output);
+			void write_file_content_inline(const char* filepath, int depth, recap_context* ctx);
+			void get_relative_path(const char* full_path, char* rel_path, size_t size);
+			int start_traversal(const char* initial_path, recap_context* ctx);
+
+			int is_text_file(const char* full_path);
+			void normalize_path(char* path);
+			int should_show_content(const char* rel_path, const char* full_path, const recap_context* ctx);
+			int generate_output_filename(output_ctx* output_context);
+			char* upload_to_gist(const char* filepath, const char* github_token);
+
+			char* realpath(const char* restrict path, char* restrict resolved_path);
+
+			#endif
+		args.c:
+			#define _POSIX_C_SOURCE 200809L
+			#include "recap.h"
+			#include <curl/curl.h>
+			#include <unistd.h>
+			#include <stdio.h>
+			#include <stdlib.h>
+			#include <string.h>
+			#include <dirent.h>
+			#include <ctype.h>
+			#include <getopt.h>
+			#include <limits.h>
+			#include <regex.h>
+
+			static int add_regex(regex_ctx* ctx, const char* pattern) {
+			    if (ctx->count >= MAX_PATTERNS) {
+			        fprintf(stderr, "Error: Too many regex patterns. Max allowed is %d\n", MAX_PATTERNS);
+			        return -1;
+			    }
+
+			    int flags = REG_EXTENDED | REG_NOSUB;
+			    int ret = regcomp(&ctx->compiled[ctx->count], pattern, flags);
+			    if (ret) {
+			        char err_buf[256];
+			        regerror(ret, &ctx->compiled[ctx->count], err_buf, sizeof(err_buf));
+			        fprintf(stderr, "Error: Could not compile regex '%s': %s\n", pattern, err_buf);
+			        return -1;
+			    }
+			    ctx->count++;
+			    return 0;
+			}
+
+			void free_regex_ctx(regex_ctx* ctx) {
+			    for (int i = 0; i < ctx->count; i++) {
+			        regfree(&ctx->compiled[i]);
+			    }
+			    ctx->count = 0;
+			}
+
+			void clear_recap_output_files(const char* target_dir) {
+			    char full_path[MAX_PATH_SIZE];
+			    const char* dir_to_open = target_dir;
+
+			    if (!target_dir || strlen(target_dir) == 0) {
+			        dir_to_open = ".";
+			    }
+
+			    if (realpath(dir_to_open, full_path) == NULL) {
+			        strncpy(full_path, dir_to_open, MAX_PATH_SIZE - 1);
+			        full_path[MAX_PATH_SIZE - 1] = '\0';
+			        if (strcmp(full_path, ".") != 0 && strcmp(full_path, "..") != 0) {
+			            normalize_path(full_path);
+			        }
+			    }
+
+			    printf("Warning: This will delete every file matching 'recap-output*' in '%s'.\n", full_path);
+			    printf("Are you sure? (y/N): ");
+			    int confirmation_char = getchar();
+			    int c;
+			    while ((c = getchar()) != '\n' && c != EOF);
+
+			    if (tolower(confirmation_char) != 'y') {
+			        printf("Operation cancelled.\n");
+			        return;
+			    }
+
+			    DIR* dir = opendir(dir_to_open);
+			    if (!dir) {
+			        perror("opendir for clearing");
+			        fprintf(stderr, "Failed to open directory: %s\n", dir_to_open);
+			        return;
+			    }
+
+			    struct dirent* entry;
+			    int deleted_count = 0;
+			    char file_to_remove[MAX_PATH_SIZE];
+			    const char* pattern = "recap-output";
+			    size_t pattern_len = strlen(pattern);
+
+			    while ((entry = readdir(dir)) != NULL) {
+			        if (strncmp(entry->d_name, pattern, pattern_len) == 0) {
+			            int path_len = snprintf(file_to_remove, sizeof(file_to_remove), "%s/%s", dir_to_open, entry->d_name);
+			            if (path_len < 0 || (size_t)path_len >= sizeof(file_to_remove)) {
+			                fprintf(stderr, "Warning: Path too long, skipping file: %s/%s\n", dir_to_open, entry->d_name);
+			                continue;
+			            }
+
+			            struct stat st;
+			            if (stat(file_to_remove, &st) == 0) {
+			                if (!S_ISREG(st.st_mode)) {
+			                    continue;
+			                }
+			            }
+			            else {
+			                perror("stat before remove");
+			                fprintf(stderr, "Warning: Could not stat file, skipping: %s\n", file_to_remove);
+			                continue;
+			            }
+
+			            if (remove(file_to_remove) == 0) {
+			                printf("Deleted: %s\n", file_to_remove);
+			                deleted_count++;
+			            }
+			            else {
+			                perror("remove recap-output file");
+			                fprintf(stderr, "Failed to delete: %s\n", file_to_remove);
+			            }
+			        }
+			    }
+			    closedir(dir);
+			    if (deleted_count > 0) {
+			        printf("Cleared %d recap-output file(s) from %s.\n", deleted_count, full_path);
+			    }
+			    else {
+			        printf("No recap-output files found to clear in %s.\n", full_path);
+			    }
+			}
+
+			void load_gitignore(recap_context* ctx, const char* gitignore_filename_arg) {
+			    char cwd[MAX_PATH_SIZE];
+			    if (!getcwd(cwd, sizeof(cwd))) {
+			        perror("getcwd in load_gitignore");
+			        return;
+			    }
+
+			    char search_path[MAX_PATH_SIZE];
+			    const char* filename_to_find = (gitignore_filename_arg && strlen(gitignore_filename_arg) > 0)
+			        ? gitignore_filename_arg : ".gitignore";
+			    int found = 0;
+
+			    char* current_dir = strdup(cwd);
+			    if (!current_dir) {
+			        perror("strdup in load_gitignore");
+			        return;
+			    }
+
+			    while (current_dir && strlen(current_dir) > 0 && strcmp(current_dir, "/") != 0) {
+			        int path_len = snprintf(search_path, sizeof(search_path), "%s/%s", current_dir, filename_to_find);
+			        if (path_len < 0 || (size_t)path_len >= sizeof(search_path)) {
+			            fprintf(stderr, "Warning: Path too long while searching for gitignore: %s/%s\n", current_dir, filename_to_find);
+			            break;
+			        }
+
+			        FILE* git_ignore_file = fopen(search_path, "r");
+			        if (git_ignore_file) {
+			            found = 1;
+			            char line[MAX_PATH_SIZE];
+			            while (fgets(line, sizeof(line), git_ignore_file)) {
+			                line[strcspn(line, "\r\n")] = 0;
+
+			                char* trimmed_line = line;
+			                while (isspace((unsigned char)*trimmed_line)) {
+			                    trimmed_line++;
+			                }
+			                if (trimmed_line[0] == '\0' || trimmed_line[0] == '#') {
+			                    continue;
+			                }
+
+			                char* end = trimmed_line + strlen(trimmed_line) - 1;
+			                while (end > trimmed_line && isspace((unsigned char)*end)) {
+			                    end--;
+			                }
+			                *(end + 1) = '\0';
+
+			                if (ctx->fnmatch_exclude_filters.count < MAX_PATTERNS && ctx->gitignore_entry_count < MAX_GITIGNORE_ENTRIES) {
+			                    strncpy(ctx->gitignore_entries[ctx->gitignore_entry_count], trimmed_line, MAX_PATH_SIZE - 1);
+			                    ctx->gitignore_entries[ctx->gitignore_entry_count][MAX_PATH_SIZE - 1] = '\0';
+			                    ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] =
+			                        ctx->gitignore_entries[ctx->gitignore_entry_count];
+			                    ctx->gitignore_entry_count++;
+			                }
+			                else {
+			                    fprintf(stderr, "Warning: Maximum number of gitignore/exclude patterns (%d) reached.\n", MAX_PATTERNS);
+			                    fclose(git_ignore_file);
+			                    goto cleanup_and_exit;
+			                }
+			            }
+			            fclose(git_ignore_file);
+			            break;
+			        }
+
+			        char* last_slash = strrchr(current_dir, '/');
+			        if (last_slash == current_dir) {
+			            if (strlen(current_dir) > 1) {
+			                current_dir[1] = '\0';
+			            }
+			            else {
+			                break;
+			            }
+			        }
+			        else if (last_slash) {
+			            *last_slash = '\0';
+			        }
+			        else {
+			            break;
+			        }
+			    }
+
+			cleanup_and_exit:
+			    free(current_dir);
+			    if (!found && gitignore_filename_arg) {
+			        fprintf(stderr, "Warning: Specified gitignore file '%s' not found in current or parent directories.\n", filename_to_find);
+			    }
+			    else if (!found && !gitignore_filename_arg) {
+			        printf("Info: No default .gitignore found in current or parent directories.\n");
+			    }
+			}
+
+			void print_help(const char* version) {
+			    printf("Usage: recap [options] [path...]\n");
+			    printf("  `path...` are the starting points for traversal (default: .)\n\n");
+			    printf("Options:\n");
+			    printf("  -h, --help                  Show this help message and exit\n");
+			    printf("  -v, --version               Show version information (%s) and exit\n", version);
+			    printf("  -C, --clear [DIR]           Clear recap-output files in [DIR] (default: .)\n\n");
+
+			    printf("Filtering and Content:\n");
+			    printf("  -i, --include <REGEX>       Include only paths that match REGEX. If a directory matches, its contents are included.\n");
+			    printf("  -e, --exclude <REGEX>       Exclude any path that matches REGEX.\n");
+			    printf("  -I, --include-content <R>   Show content for files matching <R>. Also filters the tree to only show matching files/dirs.\n");
+			    printf("  -E, --exclude-content <R>   Exclude content for files matching <R> (but does not remove them from the tree).\n");
+			    printf("  -s, --strip <REGEX>         For files with content, skip lines until a line matches REGEX\n");
+			    printf("  -g, --git [FILE]            Use .gitignore for exclusions (searches upwards from cwd)\n\n");
+
+			    printf("Output and Upload:\n");
+			    printf("  -p, --paste [KEY]           Upload output to a Gist (uses GITHUB_API_KEY env var if no key)\n");
+			    printf("  -o, --output <FILE>         Specify the output file name\n");
+			    printf("  -O, --output-dir <DIR>      Specify the output directory for a timestamped file\n\n");
+
+			    printf("Examples:\n");
+			    printf("  recap src                               # Process 'src' directory\n");
+			    printf("  recap -i '^src/utils'                   # Only process the 'src/utils' directory\n");
+			    printf("  recap -I '\\.c$'                        # Show content for all .c files, hiding other files\n");
+			    printf("  recap -I '.' -E '\\.md$'                # Show all files but suppress content of Markdown files\n");
+			    printf("  recap -I '\\.c$' -I '\\.h$'             # Show content for all .c and .h files\n");
+			    printf("  recap -I '.' -s 'END OF LICENSE'        # Show all text files, skipping license headers\n");
+			}
+
+			void parse_arguments(int argc, char* argv[], recap_context* ctx) {
+			    ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] = ".git/";
+
+			    static struct option long_options[] = {
+			        {"help",            no_argument,       0, 'h'},
+			        {"version",         no_argument,       0, 'v'},
+			        {"clear",           optional_argument, 0, 'C'},
+			        {"include",         required_argument, 0, 'i'},
+			        {"exclude",         required_argument, 0, 'e'},
+			        {"include-content", required_argument, 0, 'I'},
+			        {"exclude-content", required_argument, 0, 'E'},
+			        {"strip",           required_argument, 0, 's'},
+			        {"git",             optional_argument, 0, 'g'},
+			        {"paste",           optional_argument, 0, 'p'},
+			        {"output",          required_argument, 0, 'o'},
+			        {"output-dir",      required_argument, 0, 'O'},
+			        {0, 0, 0, 0}
+			    };
+
+			    int opt;
+			    const char* short_opts = "hvC::i:e:g::p::o:O:I:E:s:";
+
+			    while ((opt = getopt_long(argc, argv, short_opts, long_options, NULL)) != -1) {
+			        switch (opt) {
+			        case 'h':
+			            print_help(ctx->version);
+			            exit(0);
+			        case 'v':
+			            printf("recap version %s\n", ctx->version);
+			            exit(0);
+
+			        case 'C': {
+			            const char* clear_dir = optarg;
+			            if (!clear_dir && optind < argc && argv[optind][0] != '-') {
+			                clear_dir = argv[optind++];
+			            }
+			            clear_recap_output_files(clear_dir ? clear_dir : ".");
+			            exit(0);
+			        }
+
+			        case 'i':
+			            if (add_regex(&ctx->include_filters, optarg) != 0) exit(1);
+			            break;
+			        case 'e':
+			            if (add_regex(&ctx->exclude_filters, optarg) != 0) exit(1);
+			            break;
+			        case 'I':
+			            if (add_regex(&ctx->content_include_filters, optarg) != 0) exit(1);
+			            if (add_regex(&ctx->include_filters, optarg) != 0) exit(1);
+			            break;
+			        case 'E':
+			            if (add_regex(&ctx->content_exclude_filters, optarg) != 0) exit(1);
+			            break;
+			        case 's': {
+			            int ret = regcomp(&ctx->strip_regex, optarg, REG_EXTENDED | REG_NOSUB);
+			            if (ret) {
+			                char err_buf[256];
+			                regerror(ret, &ctx->strip_regex, err_buf, sizeof(err_buf));
+			                fprintf(stderr, "Error: Could not compile --strip regex '%s': %s\n", optarg, err_buf);
+			                exit(1);
+			            }
+			            ctx->strip_regex_is_set = 1;
+			            break;
+			        }
+
+			        case 'g': {
+			            const char* gitignore_file = optarg;
+			            if (!gitignore_file && optind < argc && argv[optind][0] != '-') {
+			                gitignore_file = argv[optind++];
+			            }
+			            load_gitignore(ctx, gitignore_file);
+			        }
+			                break;
+
+			        case 'p':
+			            if (optarg) {
+			                ctx->gist_api_key = optarg;
+			            }
+			            else {
+			                ctx->gist_api_key = getenv("GITHUB_API_KEY");
+			                if (!ctx->gist_api_key || ctx->gist_api_key[0] == '\0') {
+			                    fprintf(stderr, "Warning: --paste used without API key and GITHUB_API_KEY is not set.\n");
+			                    ctx->gist_api_key = "";
+			                }
+			            }
+			            break;
+
+			        case 'o':
+			            if (ctx->output.output_dir[0] != '\0') {
+			                fprintf(stderr, "Error: Cannot use both --output (-o) and --output-dir (-O).\n");
+			                exit(1);
+			            }
+			            strncpy(ctx->output.output_name, optarg, MAX_PATH_SIZE - 1);
+			            ctx->output.output_name[MAX_PATH_SIZE - 1] = '\0';
+			            break;
+
+			        case 'O':
+			            if (ctx->output.output_name[0] != '\0') {
+			                fprintf(stderr, "Error: Cannot use both --output (-o) and --output-dir (-O).\n");
+			                exit(1);
+			            }
+			            strncpy(ctx->output.output_dir, optarg, MAX_PATH_SIZE - 1);
+			            ctx->output.output_dir[MAX_PATH_SIZE - 1] = '\0';
+			            break;
+
+			        case '?':
+			            fprintf(stderr, "Try 'recap --help' for more information.\n");
+			            exit(1);
+			        default:
+			            abort();
+			        }
+			    }
+
+			    while (optind < argc) {
+			        if (ctx->start_path_count < MAX_PATTERNS) {
+			            ctx->start_paths[ctx->start_path_count++] = argv[optind++];
+			        }
+			        else {
+			            fprintf(stderr, "Error: Too many start paths specified. Max is %d\n", MAX_PATTERNS);
+			            exit(1);
+			        }
+			    }
+
+			    if (ctx->start_path_count == 0) {
+			        int action_taken = 0;
+			        for (int i = 1; i < argc; ++i) {
+			            if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0 ||
+			                strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0 ||
+			                strncmp(argv[i], "-C", 2) == 0 || strcmp(argv[i], "--clear") == 0) {
+			                action_taken = 1;
+			                break;
+			            }
+			        }
+			        if (!action_taken) {
+			            static char* default_path = ".";
+			            ctx->start_paths[ctx->start_path_count++] = default_path;
+			        }
+			    }
+			}
+	.vscode/
+		settings.json:
+			{
+			    "files.associations": {
+			        "ctf.h": "c",
+			        "stat.h": "c",
+			        "dirent.h": "c",
+			        "stdio.h": "c",
+			        "recap.h": "c",
+			        "curl.h": "c",
+			        "jansson.h": "c",
+			        "stdlib.h": "c",
+			        "string.h": "c",
+			        "time.h": "c",
+			        "limits.h": "c",
+			        "unistd.h": "c",
+			        "fnmatch.h": "c"
+			    }
+			}
+	test/
+		folder1/
+			index.html:
+				<!DOCTYPE html>
+				<html lang="en">
+				<head>
+				    <meta charset="UTF-8">
+				    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+				    <title>Test</title>
+				</head>
+				<body>
+				    <h1>this is a test</h1>
+				</body>
+				</html>
+			main.js:
+				function test() {
+				    console.log("This is a test");
+				}
+
+				test();
+			Dockerfile:
+				FROM "archLinux/archlinux"
+		folder3/
+			example.md:
+				# This is an examples
+			test
+			test.c:
+				#include <stdio.h>
+				#include <stdlib.h>
+				// this is a test
+				int main() {
+				    printf("This is a test\n");
+				    return EXIT_SUCCESS;   
+				}
+		folder2/
+			toto.exe:
+			index.ts:
+				const toto:String = "toto";
+
+				console.log(toto);
+			nope:
+				nope
+	.clang-format:
+		---
+		# Start with a known base style and override to match observed conventions.
+		BasedOnStyle: LLVM
+
+		# Indentation settings
+		IndentWidth: 4
+		TabWidth: 4
+		UseTab: Never
+
+		ColumnLimit: 0
+
+		# Keep the K&R/Attach brace style: opening braces on the same line.
+		BreakBeforeBraces: Custom
+		BraceWrapping:
+		  AfterControlStatement: false
+		  AfterEnum: false
+		  AfterFunction: false
+		  AfterNamespace: false
+		  AfterStruct: false
+		  AfterUnion: false
+		  BeforeElse: true
+
+		# Single-line if/for/while are allowed without braces (as seen in the code).
+		AllowShortIfStatementsOnASingleLine: true
+		AllowShortLoopsOnASingleLine: true
+		AllowShortBlocksOnASingleLine: false
+
+		MaxEmptyLinesToKeep: 2047
+
+		# Space rules
+		SpaceBeforeParens: ControlStatements # Space after 'if', 'while', etc., none before function calls
+		SpaceAfterCStyleCast: false # (Type*)var, with no space
+
+		# Pointer alignment: "char* ptr" (star bound to the type).
+		PointerAlignment: Left
+
+		# Turn off include sorting; keep them in the order as-is.
+		SortIncludes: Never
+
+		# This style tries not to reflow large comment blocks.
+		ReflowComments: false
+
+		# Typically recommended so that case labels align with switch statements
+		# (K&R style).
+		IndentCaseLabels: false
+		---
+
+	recap

@@ -2,21 +2,12 @@
 #define RECAP_H
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <fnmatch.h>
-#include <limits.h>
 #include <regex.h>
+#include <sys/stat.h>
 
-#define MAX_PATH_SIZE 1024
-#define MAX_PATTERNS 1024
+#define MAX_PATH_SIZE 4096
+#define MAX_PATTERNS 256
 #define MAX_GITIGNORE_ENTRIES 1024
-
 
 typedef struct {
     regex_t compiled[MAX_PATTERNS];
@@ -39,6 +30,8 @@ typedef struct {
 typedef struct {
     const char* start_paths[MAX_PATTERNS];
     int start_path_count;
+    int items_processed_count;
+    char cwd[MAX_PATH_SIZE];
 
     regex_ctx include_filters;
     regex_ctx exclude_filters;
@@ -49,8 +42,8 @@ typedef struct {
     char gitignore_entries[MAX_GITIGNORE_ENTRIES][MAX_PATH_SIZE];
     int gitignore_entry_count;
 
-    regex_t strip_until_regex;
-    int strip_until_regex_is_set;
+    regex_t strip_regex;
+    int strip_regex_is_set;
 
     output_ctx output;
     const char* gist_api_key;
@@ -58,24 +51,18 @@ typedef struct {
     FILE* output_stream;
 } recap_context;
 
-
 void parse_arguments(int argc, char* argv[], recap_context* ctx);
 void load_gitignore(recap_context* ctx, const char* gitignore_filename);
 void clear_recap_output_files(const char* target_dir);
 void free_regex_ctx(regex_ctx* ctx);
 
-void traverse_directory(const char* base_path, int depth, recap_context* ctx);
-void print_indent(int depth, FILE* output);
-void write_file_content_inline(const char* filepath, int depth, recap_context* ctx);
-void get_relative_path(const char* full_path, char* rel_path, size_t size);
-int start_traversal(const char* initial_path, recap_context* ctx);
+int start_traversal(recap_context* ctx);
 
 int is_text_file(const char* full_path);
 void normalize_path(char* path);
-int should_show_content(const char* rel_path, const char* full_path, const recap_context* ctx);
 int generate_output_filename(output_ctx* output_context);
-char* upload_to_gist(const char* filepath, const char* github_token);
+void get_relative_path(const char* full_path, const char* cwd, char* rel_path_out, size_t size);
 
-char* realpath(const char* restrict path, char* restrict resolved_path);
+char* upload_to_gist(const char* filepath, const char* github_token);
 
 #endif
