@@ -88,12 +88,29 @@ static void write_file_content_block(const char* full_path, const char* rel_path
     }
 
     char line[4096];
-    int header_stripped = !ctx->strip_regex_is_set;
+    int header_stripped = 1;
+    regex_t* strip_regex_to_use = NULL;
+
+    for (int i = 0; i < ctx->scoped_strip_rule_count; i++) {
+        if (regexec(&ctx->scoped_strip_rules[i].path_regex, rel_path, 0, NULL, 0) == 0) {
+            strip_regex_to_use = &ctx->scoped_strip_rules[i].strip_regex;
+            break;
+        }
+    }
+
+    if (!strip_regex_to_use && ctx->strip_regex_is_set) {
+        strip_regex_to_use = &ctx->strip_regex;
+    }
+
+    if (strip_regex_to_use) {
+        header_stripped = 0;
+    }
+
     int previous_line_was_blank = 0;
 
     while (fgets(line, sizeof(line), f)) {
         if (!header_stripped) {
-            if (regexec(&ctx->strip_regex, line, 0, NULL, 0) == 0) {
+            if (regexec(strip_regex_to_use, line, 0, NULL, 0) == 0) {
                 header_stripped = 1;
             }
             continue;

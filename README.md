@@ -8,7 +8,7 @@
 
 *   **Powerful Filtering**: Use extended regular expressions (REGEX) to precisely include or exclude files and directories (`--include`, `--exclude`).
 *   **Granular Content Control**: Specify exactly which files should have their content displayed using REGEX (`--include-content`), and which should not (`--exclude-content`).
-*   **Content Stripping**: Automatically remove boilerplate or header sections from file content by specifying a REGEX pattern to start from (`--strip`).
+*   **Flexible Content Stripping**: Automatically remove boilerplate from file content. Use `--strip` for a global rule, or the more powerful `--strip-scope` to apply specific stripping rules only to files matching a given path pattern.
 *   **Git Integration**: Automatically uses patterns from `.gitignore` files for exclusion. It searches for the gitignore file from the current directory upwards to the root (`--git`).
 *   **Flexible Traversal**: Specify one or more starting directories or files for the tool to process.
 *   **Versatile Output**:

@@ -8,6 +8,7 @@
 
 #define MAX_PATH_SIZE 4096
 #define MAX_PATTERNS 256
+#define MAX_SCOPED_STRIP_RULES 32
 #define MAX_GITIGNORE_ENTRIES 1024
 
 typedef struct {
@@ -25,6 +26,11 @@ typedef struct {
     const char* patterns[MAX_PATTERNS];
     int count;
 } fnmatch_ctx;
+
+typedef struct {
+    regex_t path_regex;
+    regex_t strip_regex;
+} scoped_strip_rule;
 
 typedef struct {
     char output_dir[MAX_PATH_SIZE];
@@ -50,6 +56,9 @@ typedef struct {
 
     regex_t strip_regex;
     int strip_regex_is_set;
+
+    scoped_strip_rule scoped_strip_rules[MAX_SCOPED_STRIP_RULES];
+    int scoped_strip_rule_count;
 
     output_ctx output;
     path_list matched_files;

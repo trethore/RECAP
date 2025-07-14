@@ -125,6 +125,10 @@ cleanup:
     if (ctx.strip_regex_is_set) {
         regfree(&ctx.strip_regex);
     }
+    for (int i = 0; i < ctx.scoped_strip_rule_count; i++) {
+        regfree(&ctx.scoped_strip_rules[i].path_regex);
+        regfree(&ctx.scoped_strip_rules[i].strip_regex);
+    }
     curl_global_cleanup();
     return result;
 }

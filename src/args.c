@@ -25,6 +25,35 @@ static int add_regex(regex_ctx* ctx, const char* pattern) {
     return 0;
 }
 
+static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, const char* strip_pattern) {
+    if (ctx->scoped_strip_rule_count >= MAX_SCOPED_STRIP_RULES) {
+        fprintf(stderr, "Error: Too many scoped strip rules. Max allowed is %d\n", MAX_SCOPED_STRIP_RULES);
+        return -1;
+    }
+
+    scoped_strip_rule* rule = &ctx->scoped_strip_rules[ctx->scoped_strip_rule_count];
+    int ret;
+    char err_buf[256];
+
+    ret = regcomp(&rule->path_regex, path_pattern, REG_EXTENDED | REG_NOSUB);
+    if (ret) {
+        regerror(ret, &rule->path_regex, err_buf, sizeof(err_buf));
+        fprintf(stderr, "Error: Could not compile --strip-scope path regex '%s': %s\n", path_pattern, err_buf);
+        return -1;
+    }
+
+    ret = regcomp(&rule->strip_regex, strip_pattern, REG_EXTENDED | REG_NOSUB);
+    if (ret) {
+        regerror(ret, &rule->strip_regex, err_buf, sizeof(err_buf));
+        fprintf(stderr, "Error: Could not compile --strip-scope strip regex '%s': %s\n", strip_pattern, err_buf);
+        regfree(&rule->path_regex);
+        return -1;
+    }
+
+    ctx->scoped_strip_rule_count++;
+    return 0;
+}
+
 void free_regex_ctx(regex_ctx* ctx) {
     for (int i = 0; i < ctx->count; i++) {
         regfree(&ctx->compiled[i]);
@@ -109,20 +138,34 @@ void print_help(const char* version) {
     printf("Usage: recap [options] [path...]\n");
     printf("  `path...` are the starting points for traversal (default: .).\n\n");
     printf("General Options:\n");
-    printf("  -h, --help                  Show this help message and exit.\n");
-    printf("  -v, --version               Show version information (%s) and exit.\n", version);
-    printf("  -C, --clear [DIR]           Clear recap-output files in [DIR] (default: '.') and exit.\n\n");
+    printf("  -h, --help                         Show this help message and exit.\n");
+    printf("  -v, --version                      Show version information (%s) and exit.\n", version);
+    printf("  -C, --clear [DIR]                  Clear recap-output files in [DIR] (default: '.') and exit.\n\n");
     printf("Filtering and Content (all filters use extended REGEX):\n");
-    printf("  -i, --include <REGEX>       Include only paths matching REGEX.\n");
-    printf("  -e, --exclude <REGEX>       Exclude any path matching REGEX.\n");
-    printf("  -I, --include-content <R>   Show content for files matching REGEX <R>.\n");
-    printf("  -E, --exclude-content <R>   Exclude content for files matching REGEX <R>.\n");
-    printf("  -g, --git [FILE]            Use .gitignore patterns for exclusions (searches upwards from cwd).\n");
-    printf("  -s, --strip <REGEX>         In content blocks, skip lines until a line matches REGEX.\n\n");
+    printf("  -i, --include <REGEX>              Include only paths matching REGEX.\n");
+    printf("  -e, --exclude <REGEX>              Exclude any path matching REGEX.\n");
+    printf("  -I, --include-content <R>          Show content for files matching REGEX <R>.\n");
+    printf("  -E, --exclude-content <R>          Exclude content for files matching REGEX <R>.\n");
+    printf("  -g, --git [FILE]                   Use .gitignore patterns for exclusions (searches upwards from cwd).\n");
+    printf("  -s, --strip <REGEX>                In content blocks, skip lines until a line matches REGEX.\n");
+    printf("  -S, --strip-scope <P_RE> <S_RE>    Apply strip regex <S_RE> to files matching path regex <P_RE>.\n\n");
     printf("Output and Upload:\n");
-    printf("  -o, --output <FILE>         Specify the output file name (disables stdout).\n");
-    printf("  -O, --output-dir <DIR>      Specify the output directory (disables stdout).\n");
-    printf("  -p, --paste [KEY]           Upload output to Gist (uses GITHUB_API_KEY from env).\n");
+    printf("  -o, --output <FILE>                Specify the output file name (disables stdout).\n");
+    printf("  -O, --output-dir <DIR>             Specify the output directory (disables stdout).\n");
+    printf("  -p, --paste [KEY]                  Upload output to Gist (uses GITHUB_API_KEY from env).\n");
+
+    printf("\nExamples:\n");
+    printf("  recap src doc -I '\\.(c|h|md)$'\n");
+    printf("    Process 'src' and 'doc', showing content for C, header, and markdown files.\n\n");
+
+    printf("  recap -e '^(obj|test)/'\n");
+    printf("    Process the current directory, excluding all paths within 'obj/' and 'test/'.\n\n");
+
+    printf("  recap -I '\\.c$' -S '\\.c$' 'int main'\n");
+    printf("    Show content for all .c files, but strip everything before the 'main' function.\n\n");
+
+    printf("  recap -g --paste\n");
+    printf("    Use .gitignore rules for exclusion and upload the result to a private Gist.\n");
 }
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx) {
@@ -131,15 +174,15 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'}, {"version", no_argument, 0, 'v'},
         {"clear", optional_argument, 0, 'C'}, {"include", required_argument, 0, 'i'},
-        {"exclude", required_argument, 0, 'e'}, {"include-content", required_argument, 0, 'I'},
-        {"exclude-content", required_argument, 0, 'E'}, {"strip", required_argument, 0, 's'},
+        {"exclude", required_argument, 0, 'e'}, {"include-content", required_argument, 0, 'I'}, {"exclude-content", required_argument, 0, 'E'},
+        {"strip", required_argument, 0, 's'}, {"strip-scope", required_argument, 0, 'S'},
         {"git", optional_argument, 0, 'g'}, {"paste", optional_argument, 0, 'p'},
         {"output", required_argument, 0, 'o'}, {"output-dir", required_argument, 0, 'O'},
         {0, 0, 0, 0}
     };
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvC::i:e:I:E:s:g::p::o:O:", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
         switch (opt) {
         case 'h': print_help(ctx->version); exit(0);
         case 'v': printf("recap version %s\n", ctx->version); exit(0);
@@ -155,6 +198,14 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             else {
                 fprintf(stderr, "Error: Could not compile --strip regex '%s'\n", optarg);
             }
+            break;
+        case 'S':
+            if (optind >= argc) {
+                fprintf(stderr, "Error: --strip-scope requires two arguments: a path regex and a strip regex.\n");
+                exit(1);
+            }
+            add_scoped_strip_rule(ctx, optarg, argv[optind]);
+            optind++;
             break;
         case 'g': load_gitignore(ctx, optarg); break;
         case 'p': ctx->gist_api_key = optarg ? optarg : getenv("GITHUB_API_KEY"); if (!ctx->gist_api_key) ctx->gist_api_key = ""; break;
