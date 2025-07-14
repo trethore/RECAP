@@ -9,16 +9,25 @@
 #include <ctype.h>
 #include <limits.h>
 
+static int add_regex_internal(pcre2_code** re, const char* pattern, uint32_t options) {
+    int error_code;
+    PCRE2_SIZE error_offset;
+    *re = pcre2_compile((PCRE2_SPTR)pattern, PCRE2_ZERO_TERMINATED, options, &error_code, &error_offset, NULL);
+    if (*re == NULL) {
+        PCRE2_UCHAR err_buf[256];
+        pcre2_get_error_message(error_code, err_buf, sizeof(err_buf));
+        fprintf(stderr, "Error: Could not compile regex '%s': %s at offset %d\n", pattern, (char*)err_buf, (int)error_offset);
+        return -1;
+    }
+    return 0;
+}
+
 static int add_regex(regex_ctx* ctx, const char* pattern) {
     if (ctx->count >= MAX_PATTERNS) {
         fprintf(stderr, "Error: Too many regex patterns. Max allowed is %d\n", MAX_PATTERNS);
         return -1;
     }
-    int ret = regcomp(&ctx->compiled[ctx->count], pattern, REG_EXTENDED | REG_NOSUB);
-    if (ret) {
-        char err_buf[256];
-        regerror(ret, &ctx->compiled[ctx->count], err_buf, sizeof(err_buf));
-        fprintf(stderr, "Error: Could not compile regex '%s': %s\n", pattern, err_buf);
+    if (add_regex_internal(&ctx->compiled[ctx->count], pattern, 0) != 0) {
         return -1;
     }
     ctx->count++;
@@ -32,21 +41,13 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
     }
 
     scoped_strip_rule* rule = &ctx->scoped_strip_rules[ctx->scoped_strip_rule_count];
-    int ret;
-    char err_buf[256];
 
-    ret = regcomp(&rule->path_regex, path_pattern, REG_EXTENDED | REG_NOSUB);
-    if (ret) {
-        regerror(ret, &rule->path_regex, err_buf, sizeof(err_buf));
-        fprintf(stderr, "Error: Could not compile --strip-scope path regex '%s': %s\n", path_pattern, err_buf);
+    if (add_regex_internal(&rule->path_regex, path_pattern, 0) != 0) {
         return -1;
     }
 
-    ret = regcomp(&rule->strip_regex, strip_pattern, REG_EXTENDED);
-    if (ret) {
-        regerror(ret, &rule->strip_regex, err_buf, sizeof(err_buf));
-        fprintf(stderr, "Error: Could not compile --strip-scope strip regex '%s': %s\n", strip_pattern, err_buf);
-        regfree(&rule->path_regex);
+    if (add_regex_internal(&rule->strip_regex, strip_pattern, PCRE2_DOTALL) != 0) {
+        pcre2_code_free(rule->path_regex);
         return -1;
     }
 
@@ -56,7 +57,7 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
 
 void free_regex_ctx(regex_ctx* ctx) {
     for (int i = 0; i < ctx->count; i++) {
-        regfree(&ctx->compiled[i]);
+        pcre2_code_free(ctx->compiled[i]);
     }
     ctx->count = 0;
 }
@@ -141,13 +142,13 @@ void print_help(const char* version) {
     printf("  -h, --help                         Show this help message and exit.\n");
     printf("  -v, --version                      Show version information (%s) and exit.\n", version);
     printf("  -C, --clear [DIR]                  Clear recap-output files in [DIR] (default: '.') and exit.\n\n");
-    printf("Filtering and Content (all filters use extended REGEX):\n");
+    printf("Filtering and Content (all filters use PCRE2 REGEX):\n");
     printf("  -i, --include <REGEX>              Include only paths matching REGEX.\n");
     printf("  -e, --exclude <REGEX>              Exclude any path matching REGEX.\n");
     printf("  -I, --include-content <R>          Show content for files matching REGEX <R>.\n");
     printf("  -E, --exclude-content <R>          Exclude content for files matching REGEX <R>.\n");
     printf("  -g, --git [FILE]                   Use .gitignore patterns for exclusions (searches upwards from cwd).\n");
-    printf("  -s, --strip <REGEX>                In content blocks, skip lines until a line matches REGEX.\n");
+    printf("  -s, --strip <REGEX>                In content blocks, skip all content that matches REGEX.\n");
     printf("  -S, --strip-scope <P_RE> <S_RE>    Apply strip regex <S_RE> to files matching path regex <P_RE>.\n\n");
     printf("Output and Upload:\n");
     printf("  -o, --output <FILE>                Specify the output file name (disables stdout).\n");
@@ -161,8 +162,8 @@ void print_help(const char* version) {
     printf("  recap -e '^(obj|test)/'\n");
     printf("    Process the current directory, excluding all paths within 'obj/' and 'test/'.\n\n");
 
-    printf("  recap -I '\\.c$' -S '\\.c$' 'int main'\n");
-    printf("    Show content for all .c files, but strip everything before the 'main' function.\n\n");
+    printf("  recap -I '\\.js$' -s '/\\*\\*.*?\\*/\\s*'\n");
+    printf("    Show content for all .js files, but strip initial JSDoc comment blocks.\n\n");
 
     printf("  recap -g --paste\n");
     printf("    Use .gitignore rules for exclusion and upload the result to a private Gist.\n");
@@ -192,11 +193,8 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         case 'I': add_regex(&ctx->content_include_filters, optarg); add_regex(&ctx->include_filters, optarg); break;
         case 'E': add_regex(&ctx->content_exclude_filters, optarg); break;
         case 's':
-            if (regcomp(&ctx->strip_regex, optarg, REG_EXTENDED) == 0) {
+            if (add_regex_internal(&ctx->strip_regex, optarg, PCRE2_DOTALL) == 0) {
                 ctx->strip_regex_is_set = 1;
-            }
-            else {
-                fprintf(stderr, "Error: Could not compile --strip regex '%s'\n", optarg);
             }
             break;
         case 'S':

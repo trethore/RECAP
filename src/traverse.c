@@ -31,9 +31,17 @@ static int path_list_add(path_list* list, const char* path) {
 }
 
 static int match_regex_list(const regex_ctx* ctx, const char* str) {
+    pcre2_match_data* match_data = pcre2_match_data_create(1, NULL);
+    if (!match_data) return 0;
+
     for (int i = 0; i < ctx->count; i++) {
-        if (regexec(&ctx->compiled[i], str, 0, NULL, 0) == 0) return 1;
+        int rc = pcre2_match(ctx->compiled[i], (PCRE2_SPTR)str, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL);
+        if (rc >= 0) {
+            pcre2_match_data_free(match_data);
+            return 1;
+        }
     }
+    pcre2_match_data_free(match_data);
     return 0;
 }
 
@@ -114,26 +122,29 @@ static void write_file_content_block(const char* full_path, const char* rel_path
     fclose(f);
 
     const char* content_to_print = content;
-    regex_t* strip_regex_to_use = NULL;
+    pcre2_code* strip_regex_to_use = NULL;
 
     for (int i = 0; i < ctx->scoped_strip_rule_count; i++) {
-        if (regexec(&ctx->scoped_strip_rules[i].path_regex, rel_path, 0, NULL, 0) == 0) {
-            strip_regex_to_use = &ctx->scoped_strip_rules[i].strip_regex;
+        pcre2_match_data* match_data = pcre2_match_data_create(1, NULL);
+        if (match_data) {
+            if (pcre2_match(ctx->scoped_strip_rules[i].path_regex, (PCRE2_SPTR)rel_path, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL) >= 0) {
+                strip_regex_to_use = ctx->scoped_strip_rules[i].strip_regex;
+            }
+            pcre2_match_data_free(match_data);
         }
     }
 
     if (!strip_regex_to_use && ctx->strip_regex_is_set) {
-        strip_regex_to_use = &ctx->strip_regex;
+        strip_regex_to_use = ctx->strip_regex;
     }
 
     if (strip_regex_to_use) {
-        regmatch_t match;
-        if (regexec(strip_regex_to_use, content, 1, &match, 0) == 0) {
-            content_to_print = content + match.rm_eo;
+        pcre2_match_data* match_data = pcre2_match_data_create_from_pattern(strip_regex_to_use, NULL);
+        if (pcre2_match(strip_regex_to_use, (PCRE2_SPTR)content, file_size, 0, 0, match_data, NULL) >= 0) {
+            PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(match_data);
+            content_to_print = content + ovector[1];
         }
-        else {
-            content_to_print = content + file_size;
-        }
+        pcre2_match_data_free(match_data);
     }
 
     const char* p = content_to_print;

@@ -4,19 +4,18 @@ MANDIR := $(PREFIX)/share/man/man1
 
 CC = gcc
 CFLAGS = -Wall -Wextra -std=gnu11 -g -D_POSIX_C_SOURCE=200809L
-LIBS = -lcurl -ljansson
+LIBS = -lcurl -ljansson -lpcre2-8
 
 SRCDIR = src
 OBJDIR = obj
 EXEC = recap
 MANPAGE = doc/recap.1
 
-SOURCES = $(wildcard $(SRCDIR)/*.c) 
+SOURCES = $(wildcard $(SRCDIR)/*.c)
 OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
 
 all: $(EXEC)
 
-# Link target
 $(EXEC): $(OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 

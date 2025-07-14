@@ -2,7 +2,8 @@
 #define RECAP_H
 
 #include <stdio.h>
-#include <regex.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 #include <sys/stat.h>
 #include <stddef.h>
 
@@ -10,7 +11,7 @@
 #define MAX_PATTERNS 256
 #define MAX_SCOPED_STRIP_RULES 32
 #define MAX_GITIGNORE_ENTRIES 1024
-#define MAX_FILE_CONTENT_SIZE (10 * 1024 * 1024) // 10MB, same as Gist limit
+#define MAX_FILE_CONTENT_SIZE (10 * 1024 * 1024) // 10MB
 
 typedef struct {
     char** items;
@@ -19,7 +20,7 @@ typedef struct {
 } path_list;
 
 typedef struct {
-    regex_t compiled[MAX_PATTERNS];
+    pcre2_code* compiled[MAX_PATTERNS];
     int count;
 } regex_ctx;
 
@@ -29,8 +30,8 @@ typedef struct {
 } fnmatch_ctx;
 
 typedef struct {
-    regex_t path_regex;
-    regex_t strip_regex;
+    pcre2_code* path_regex;
+    pcre2_code* strip_regex;
 } scoped_strip_rule;
 
 typedef struct {
@@ -55,7 +56,7 @@ typedef struct {
     char gitignore_entries[MAX_GITIGNORE_ENTRIES][MAX_PATH_SIZE];
     int gitignore_entry_count;
 
-    regex_t strip_regex;
+    pcre2_code* strip_regex;
     int strip_regex_is_set;
 
     scoped_strip_rule scoped_strip_rules[MAX_SCOPED_STRIP_RULES];
