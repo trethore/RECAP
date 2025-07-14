@@ -81,20 +81,44 @@ static int should_show_content(const char* rel_path, const char* full_path, reca
 static void write_file_content_block(const char* full_path, const char* rel_path, recap_context* ctx) {
     fprintf(ctx->output_stream, "%s:\n", rel_path);
 
-    FILE* f = fopen(full_path, "r");
+    FILE* f = fopen(full_path, "rb");
     if (!f) {
         fprintf(ctx->output_stream, "[Error reading file content]\n");
         return;
     }
 
-    char line[4096];
-    int header_stripped = 1;
+    fseek(f, 0, SEEK_END);
+    long file_size = ftell(f);
+    fseek(f, 0, SEEK_SET);
+
+    if (file_size > MAX_FILE_CONTENT_SIZE) {
+        fprintf(ctx->output_stream, "[File content too large to process (>%dMB)]\n", MAX_FILE_CONTENT_SIZE / (1024 * 1024));
+        fclose(f);
+        return;
+    }
+
+    char* content = malloc(file_size + 1);
+    if (!content) {
+        fprintf(ctx->output_stream, "[Error: could not allocate memory for file content]\n");
+        fclose(f);
+        return;
+    }
+
+    if (fread(content, 1, file_size, f) != (size_t)file_size) {
+        fprintf(ctx->output_stream, "[Error reading file content]\n");
+        free(content);
+        fclose(f);
+        return;
+    }
+    content[file_size] = '\0';
+    fclose(f);
+
+    const char* content_to_print = content;
     regex_t* strip_regex_to_use = NULL;
 
     for (int i = 0; i < ctx->scoped_strip_rule_count; i++) {
         if (regexec(&ctx->scoped_strip_rules[i].path_regex, rel_path, 0, NULL, 0) == 0) {
             strip_regex_to_use = &ctx->scoped_strip_rules[i].strip_regex;
-            break;
         }
     }
 
@@ -103,25 +127,23 @@ static void write_file_content_block(const char* full_path, const char* rel_path
     }
 
     if (strip_regex_to_use) {
-        header_stripped = 0;
+        regmatch_t match;
+        if (regexec(strip_regex_to_use, content, 1, &match, 0) == 0) {
+            content_to_print = content + match.rm_eo;
+        }
+        else {
+            content_to_print = content + file_size;
+        }
     }
 
+    const char* p = content_to_print;
     int previous_line_was_blank = 0;
+    while (*p) {
+        const char* end_of_line = strchr(p, '\n');
+        size_t line_len = end_of_line ? (size_t)(end_of_line - p) : strlen(p);
+        if (line_len > 0 && p[line_len - 1] == '\r') line_len--;
 
-    while (fgets(line, sizeof(line), f)) {
-        if (!header_stripped) {
-            if (regexec(strip_regex_to_use, line, 0, NULL, 0) == 0) {
-                header_stripped = 1;
-            }
-            continue;
-        }
-
-        size_t len = strlen(line);
-        while (len > 0 && (line[len - 1] == '\n' || line[len - 1] == '\r')) {
-            line[--len] = '\0';
-        }
-
-        if (len == 0) {
+        if (line_len == 0) {
             if (!previous_line_was_blank) {
                 fputc('\n', ctx->output_stream);
                 previous_line_was_blank = 1;
@@ -129,11 +151,20 @@ static void write_file_content_block(const char* full_path, const char* rel_path
         }
         else {
             previous_line_was_blank = 0;
-            fprintf(ctx->output_stream, "%s\n", line);
+            fprintf(ctx->output_stream, "%.*s\n", (int)line_len, p);
+        }
+
+        if (end_of_line) {
+            p = end_of_line + 1;
+        }
+        else {
+            break;
         }
     }
-    fclose(f);
+
+    free(content);
 }
+
 
 static void print_output(recap_context* ctx) {
     for (size_t i = 0; i < ctx->matched_files.count; i++) {

@@ -42,7 +42,7 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
         return -1;
     }
 
-    ret = regcomp(&rule->strip_regex, strip_pattern, REG_EXTENDED | REG_NOSUB);
+    ret = regcomp(&rule->strip_regex, strip_pattern, REG_EXTENDED);
     if (ret) {
         regerror(ret, &rule->strip_regex, err_buf, sizeof(err_buf));
         fprintf(stderr, "Error: Could not compile --strip-scope strip regex '%s': %s\n", strip_pattern, err_buf);
@@ -192,7 +192,7 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         case 'I': add_regex(&ctx->content_include_filters, optarg); add_regex(&ctx->include_filters, optarg); break;
         case 'E': add_regex(&ctx->content_exclude_filters, optarg); break;
         case 's':
-            if (regcomp(&ctx->strip_regex, optarg, REG_EXTENDED | REG_NOSUB) == 0) {
+            if (regcomp(&ctx->strip_regex, optarg, REG_EXTENDED) == 0) {
                 ctx->strip_regex_is_set = 1;
             }
             else {

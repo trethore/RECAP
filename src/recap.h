@@ -10,6 +10,7 @@
 #define MAX_PATTERNS 256
 #define MAX_SCOPED_STRIP_RULES 32
 #define MAX_GITIGNORE_ENTRIES 1024
+#define MAX_FILE_CONTENT_SIZE (10 * 1024 * 1024) // 10MB, same as Gist limit
 
 typedef struct {
     char** items;
