@@ -46,7 +46,7 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
         return -1;
     }
 
-    if (add_regex_internal(&rule->strip_regex, strip_pattern, PCRE2_DOTALL) != 0) {
+    if (add_regex_internal(&rule->strip_regex, strip_pattern, PCRE2_MULTILINE) != 0) {
         pcre2_code_free(rule->path_regex);
         return -1;
     }
@@ -162,8 +162,8 @@ void print_help(const char* version) {
     printf("  recap -e '^(obj|test)/'\n");
     printf("    Process the current directory, excluding all paths within 'obj/' and 'test/'.\n\n");
 
-    printf("  recap -I '\\.js$' -s '/\\*\\*.*?\\*/\\s*'\n");
-    printf("    Show content for all .js files, but strip initial JSDoc comment blocks.\n\n");
+    printf("  recap -I '.*'-s '^\\/\\*\\*(.|\\s)*\\*\\/\\s* \n");
+    printf("    Strip a JSDoc-style comment header from all files before printing their content.\n\n");
 
     printf("  recap -g --paste\n");
     printf("    Use .gitignore rules for exclusion and upload the result to a private Gist.\n");
@@ -173,27 +173,35 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
     ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] = ".git/";
 
     static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'}, {"version", no_argument, 0, 'v'},
-        {"clear", optional_argument, 0, 'C'}, {"include", required_argument, 0, 'i'},
-        {"exclude", required_argument, 0, 'e'}, {"include-content", required_argument, 0, 'I'}, {"exclude-content", required_argument, 0, 'E'},
-        {"strip", required_argument, 0, 's'}, {"strip-scope", required_argument, 0, 'S'},
-        {"git", optional_argument, 0, 'g'}, {"paste", optional_argument, 0, 'p'},
-        {"output", required_argument, 0, 'o'}, {"output-dir", required_argument, 0, 'O'},
-        {0, 0, 0, 0}
-    };
+        {"help", no_argument, 0, 'h'}, {"version", no_argument, 0, 'v'}, {"clear", optional_argument, 0, 'C'}, {"include", required_argument, 0, 'i'}, {"exclude", required_argument, 0, 'e'}, {"include-content", required_argument, 0, 'I'}, {"exclude-content", required_argument, 0, 'E'}, {"strip", required_argument, 0, 's'}, {"strip-scope", required_argument, 0, 'S'}, {"git", optional_argument, 0, 'g'}, {"paste", optional_argument, 0, 'p'}, {"output", required_argument, 0, 'o'}, {"output-dir", required_argument, 0, 'O'}, {0, 0, 0, 0}};
 
     int opt;
     while ((opt = getopt_long(argc, argv, "hvC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
         switch (opt) {
-        case 'h': print_help(ctx->version); exit(0);
-        case 'v': printf("recap version %s\n", ctx->version); exit(0);
-        case 'C': clear_recap_output_files(optarg); exit(0);
-        case 'i': add_regex(&ctx->include_filters, optarg); break;
-        case 'e': add_regex(&ctx->exclude_filters, optarg); break;
-        case 'I': add_regex(&ctx->content_include_filters, optarg); add_regex(&ctx->include_filters, optarg); break;
-        case 'E': add_regex(&ctx->content_exclude_filters, optarg); break;
+        case 'h':
+            print_help(ctx->version);
+            exit(0);
+        case 'v':
+            printf("recap version %s\n", ctx->version);
+            exit(0);
+        case 'C':
+            clear_recap_output_files(optarg);
+            exit(0);
+        case 'i':
+            add_regex(&ctx->include_filters, optarg);
+            break;
+        case 'e':
+            add_regex(&ctx->exclude_filters, optarg);
+            break;
+        case 'I':
+            add_regex(&ctx->content_include_filters, optarg);
+            add_regex(&ctx->include_filters, optarg);
+            break;
+        case 'E':
+            add_regex(&ctx->content_exclude_filters, optarg);
+            break;
         case 's':
-            if (add_regex_internal(&ctx->strip_regex, optarg, PCRE2_DOTALL) == 0) {
+            if (add_regex_internal(&ctx->strip_regex, optarg, PCRE2_MULTILINE) == 0) {
                 ctx->strip_regex_is_set = 1;
             }
             break;
@@ -205,11 +213,21 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             add_scoped_strip_rule(ctx, optarg, argv[optind]);
             optind++;
             break;
-        case 'g': load_gitignore(ctx, optarg); break;
-        case 'p': ctx->gist_api_key = optarg ? optarg : getenv("GITHUB_API_KEY"); if (!ctx->gist_api_key) ctx->gist_api_key = ""; break;
-        case 'o': strncpy(ctx->output.output_name, optarg, sizeof(ctx->output.output_name) - 1); break;
-        case 'O': strncpy(ctx->output.output_dir, optarg, sizeof(ctx->output.output_dir) - 1); break;
-        default: exit(1);
+        case 'g':
+            load_gitignore(ctx, optarg);
+            break;
+        case 'p':
+            ctx->gist_api_key = optarg ? optarg : getenv("GITHUB_API_KEY");
+            if (!ctx->gist_api_key) ctx->gist_api_key = "";
+            break;
+        case 'o':
+            strncpy(ctx->output.output_name, optarg, sizeof(ctx->output.output_name) - 1);
+            break;
+        case 'O':
+            strncpy(ctx->output.output_dir, optarg, sizeof(ctx->output.output_dir) - 1);
+            break;
+        default:
+            exit(1);
         }
     }
 

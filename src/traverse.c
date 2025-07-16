@@ -1,7 +1,6 @@
 #define _POSIX_C_SOURCE 200809L
 #include "recap.h"
 #include <dirent.h>
-#include <errno.h>
 #include <fnmatch.h>
 #include <limits.h>
 #include <stdlib.h>
