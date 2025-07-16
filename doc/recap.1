@@ -31,7 +31,7 @@ Show content for files with paths matching the regular expression. Can be repeat
 Do not show content for files with paths matching the regular expression. Can berepeated.
 .TP
 .B \-s, \-\-strip=\fIREGEX\fR
-In content blocks, skip all lines until a line matches the regular expression.
+Strip the leading content that matches \fIREGEX\fR from content blocks.
 .TP
 .B \-S, \-\-strip-scope \fIPATH_REGEX\fR \fISTRIP_REGEX\fR
 Apply strip rule \fISTRIP_REGEX\fR only to files whose path matches \fIPATH_REGEX\fR. Can be repeated. Scoped rules take precedence over the global \fB\-\-strip\fR option.
@@ -79,8 +79,8 @@ Process the current directory, excluding any paths that start with 'obj/' or 'te
 .B recap -g --paste
 Process the project using .gitignore rules for exclusion and upload the result to a Gist.
 .TP
-.B recap -I '\e\e.c$' -S '\e\e.c$' '^int main'
-Show content for all .c files, stripping the content of each file before its \fBint main\fR line.
+.B recap -I '\e\e.js$' -S '\e\e.js$' '^\\s*\\/\\*\\*.*?\\*\\/'
+Strip a JSDoc-style comment header from all .js files before printing their content.
 .RE
 .SH AUTHOR
 Written by Trethore and Scover.

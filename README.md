@@ -8,7 +8,7 @@
 
 *   **Powerful Filtering**: Use extended regular expressions (REGEX) to precisely include or exclude files and directories (`--include`, `--exclude`).
 *   **Granular Content Control**: Specify exactly which files should have their content displayed using REGEX (`--include-content`), and which should not (`--exclude-content`).
-*   **Flexible Content Stripping**: Automatically remove boilerplate from file content. Use `--strip` for a global rule, or the more powerful `--strip-scope` to apply specific stripping rules only to files matching a given path pattern.
+*   **Flexible Content Stripping**: Automatically remove the leading portion of file content (like boilerplate or license headers) that matches a given regex. Use `--strip` for a global rule, or the more powerful `--strip-scope` to apply specific stripping rules only to files matching a given path pattern.
 *   **Git Integration**: Automatically uses patterns from `.gitignore` files for exclusion. It searches for the gitignore file from the current directory upwards to the root (`--git`).
 *   **Flexible Traversal**: Specify one or more starting directories or files for the tool to process.
 *   **Versatile Output**:
@@ -23,14 +23,13 @@
 ### Dependencies
 
 This project requires the following libraries:
-
 *   libcurl (for HTTP requests)
 *   jansson (for JSON parsing)
+*   pcre2 (for regular expressions)
 
 On Debian/Ubuntu systems, you can install these dependencies with:
-
 ```bash
-sudo apt-get install libcurl4-openssl-dev libjansson-dev
+sudo apt-get install libcurl4-openssl-dev libjansson-dev libpcre2-dev
 ```
 
 ### Build Instructions
@@ -52,13 +51,28 @@ sudo apt-get install libcurl4-openssl-dev libjansson-dev
     make clean
     ```
 
-### Build Configuration
+## Examples
 
-The project is compiled with the following flags:
+#### Basic Content Inclusion
+Process the `src` and `doc` directories, showing content only for C, header, and markdown files.
+```bash
+recap src doc -I '\.(c|h|md)$'
+```
 
-*   `-Wall -Wextra`: Enable all warnings
-*   `-std=gnu11`: Use GNU C11 standard
-*   `-g`: Include debugging information
-*   `-D_POSIX_C_SOURCE=200809L`
+#### Excluding Directories
+Process the current directory, but exclude any path starting with `obj/` or `test/`.
+```bash
+recap -e '^(obj|test)/'
+```
 
-If you need to modify the compiler or flags, you can edit the variables at the top of the Makefile.
+#### Stripping Boilerplate License Headers
+Include content for all `.js` files, but use a scoped strip rule to remove the leading JSDoc-style comment block from each one.
+```bash
+recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/'
+```
+
+#### Using Gitignore and Uploading to Gist
+Process the project using `.gitignore` rules for exclusion and automatically upload the result to a private GitHub Gist.
+```bash
+recap -g --paste
+```
