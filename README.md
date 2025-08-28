@@ -16,6 +16,7 @@ It's a powerful utility for anyone who needs to quickly package a project's sour
 *   **Git Integration**: Automatically respects your `.gitignore` files to exclude irrelevant content, ensuring a clean output (`--git`).
 *   **Precise Content Control**: Decide exactly which files should have their content displayed (`--include-content`) and which should only be listed by path.
 *   **Header Stripping**: Automatically remove boilerplate like license headers or comment blocks from file content using regex, on a global (`--strip`) or per-file-type basis (`--strip-scope`).
+*   **Content Compaction**: Optionally removes comments and redundant whitespace from file content to create a denser, token-efficient output for LLMs (`--compact`).
 *   **Versatile Output Modes**:
     *   Print to **stdout** to pipe into other commands.
     *   Save to a named file (`--output`).
