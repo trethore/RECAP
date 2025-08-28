@@ -149,7 +149,8 @@ void print_help(const char* version) {
     printf("  -E, --exclude-content <R>          Exclude content for files matching REGEX <R>.\n");
     printf("  -g, --git [FILE]                   Use .gitignore patterns for exclusions (searches upwards from cwd).\n");
     printf("  -s, --strip <REGEX>                In content blocks, skip all content that matches REGEX.\n");
-    printf("  -S, --strip-scope <P_RE> <S_RE>    Apply strip regex <S_RE> to files matching path regex <P_RE>.\n\n");
+    printf("  -S, --strip-scope <P_RE> <S_RE>    Apply strip regex <S_RE> to files matching path regex <P_RE>.\n");
+    printf("      --compact                      Remove comments and redundant whitespace from content.\n\n");
     printf("Output and Upload:\n");
     printf("  -o, --output <FILE>                Specify the output file name (disables stdout).\n");
     printf("  -O, --output-dir <DIR>             Specify the output directory (disables stdout).\n");
@@ -174,7 +175,22 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
     ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] = ".git/";
 
     static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'}, {"version", no_argument, 0, 'v'}, {"clear", optional_argument, 0, 'C'}, {"include", required_argument, 0, 'i'}, {"exclude", required_argument, 0, 'e'}, {"include-content", required_argument, 0, 'I'}, {"exclude-content", required_argument, 0, 'E'}, {"strip", required_argument, 0, 's'}, {"strip-scope", required_argument, 0, 'S'}, {"git", optional_argument, 0, 'g'}, {"paste", optional_argument, 0, 'p'}, {"output", required_argument, 0, 'o'}, {"output-dir", required_argument, 0, 'O'}, {"clipboard", no_argument, 0, 'c'}, {0, 0, 0, 0}};
+        {"help", no_argument, 0, 'h'},
+        {"version", no_argument, 0, 'v'},
+        {"clear", optional_argument, 0, 'C'},
+        {"include", required_argument, 0, 'i'},
+        {"exclude", required_argument, 0, 'e'},
+        {"include-content", required_argument, 0, 'I'},
+        {"exclude-content", required_argument, 0, 'E'},
+        {"strip", required_argument, 0, 's'},
+        {"strip-scope", required_argument, 0, 'S'},
+        {"git", optional_argument, 0, 'g'},
+        {"paste", optional_argument, 0, 'p'},
+        {"output", required_argument, 0, 'o'},
+        {"output-dir", required_argument, 0, 'O'},
+        {"clipboard", no_argument, 0, 'c'},
+        {"compact", no_argument, 0, 256},
+        {0, 0, 0, 0}};
 
     int opt;
     while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
@@ -229,6 +245,9 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             break;
         case 'c':
             ctx->copy_to_clipboard = 1;
+            break;
+        case 256:
+            ctx->compact_output = 1;
             break;
         default:
             exit(1);

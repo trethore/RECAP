@@ -104,23 +104,23 @@ static void write_file_content_block(const char* full_path, const char* rel_path
         return;
     }
 
-    char* content = malloc(file_size + 1);
-    if (!content) {
+    char* content_buffer = malloc(file_size + 1);
+    if (!content_buffer) {
         fprintf(ctx->output_stream, "[Error: could not allocate memory for file content]\n");
         fclose(f);
         return;
     }
 
-    if (fread(content, 1, file_size, f) != (size_t)file_size) {
+    if (fread(content_buffer, 1, file_size, f) != (size_t)file_size) {
         fprintf(ctx->output_stream, "[Error reading file content]\n");
-        free(content);
+        free(content_buffer);
         fclose(f);
         return;
     }
-    content[file_size] = '\0';
+    content_buffer[file_size] = '\0';
     fclose(f);
 
-    const char* content_to_print = content;
+    const char* content_after_strip = content_buffer;
     pcre2_code* strip_regex_to_use = NULL;
 
     for (int i = 0; i < ctx->scoped_strip_rule_count; i++) {
@@ -128,25 +128,30 @@ static void write_file_content_block(const char* full_path, const char* rel_path
         if (match_data) {
             if (pcre2_match(ctx->scoped_strip_rules[i].path_regex, (PCRE2_SPTR)rel_path, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL) >= 0) {
                 strip_regex_to_use = ctx->scoped_strip_rules[i].strip_regex;
+                break;
             }
             pcre2_match_data_free(match_data);
         }
     }
-
     if (!strip_regex_to_use && ctx->strip_regex_is_set) {
         strip_regex_to_use = ctx->strip_regex;
     }
 
     if (strip_regex_to_use) {
         pcre2_match_data* match_data = pcre2_match_data_create_from_pattern(strip_regex_to_use, NULL);
-        if (pcre2_match(strip_regex_to_use, (PCRE2_SPTR)content, file_size, 0, 0, match_data, NULL) >= 0) {
+        if (pcre2_match(strip_regex_to_use, (PCRE2_SPTR)content_buffer, file_size, 0, 0, match_data, NULL) >= 0) {
             PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(match_data);
-            content_to_print = content + ovector[1];
+            content_after_strip = content_buffer + ovector[1];
         }
         pcre2_match_data_free(match_data);
     }
 
-    const char* p = content_to_print;
+    char* compacted_content = NULL;
+    if (ctx->compact_output) {
+        compacted_content = apply_compact_transformations(content_after_strip, rel_path);
+    }
+
+    const char* p = compacted_content ? compacted_content : content_after_strip;
     int previous_line_was_blank = 0;
     while (*p) {
         const char* end_of_line = strchr(p, '\n');
@@ -172,9 +177,11 @@ static void write_file_content_block(const char* full_path, const char* rel_path
         }
     }
 
-    free(content);
+    if (compacted_content) {
+        free(compacted_content);
+    }
+    free(content_buffer);
 }
-
 
 static void print_output(recap_context* ctx) {
     for (size_t i = 0; i < ctx->matched_files.count; i++) {

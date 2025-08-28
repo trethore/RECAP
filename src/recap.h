@@ -70,6 +70,7 @@ typedef struct {
     const char* version;
     FILE* output_stream;
     int copy_to_clipboard;
+    int compact_output;
 } recap_context;
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx);
@@ -87,5 +88,7 @@ void get_relative_path(const char* full_path, const char* cwd, char* rel_path_ou
 char* upload_to_gist(const char* filepath, const char* github_token);
 
 int copy_file_content_to_clipboard(const char* filepath);
+
+char* apply_compact_transformations(const char* content, const char* filename);
 
 #endif
