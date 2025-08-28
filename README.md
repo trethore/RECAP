@@ -1,78 +1,140 @@
 # RECAP - Extracts Context And Packages
 
-## Purpose
+A versatile command-line tool for capturing and packaging project context, designed for developers, teams, and AI assistants.
 
-`recap` is a command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code.
+---
 
-## Features
+## What is RECAP?
 
-*   **Powerful Filtering**: Use extended regular expressions (REGEX) to precisely include or exclude files and directories (`--include`, `--exclude`).
-*   **Granular Content Control**: Specify exactly which files should have their content displayed using REGEX (`--include-content`), and which should not (`--exclude-content`).
-*   **Flexible Content Stripping**: Automatically remove the leading portion of file content (like boilerplate or license headers) that matches a given regex. Use `--strip` for a global rule, or the more powerful `--strip-scope` to apply specific stripping rules only to files matching a given path pattern.
-*   **Git Integration**: Automatically uses patterns from `.gitignore` files for exclusion. It searches for the gitignore file from the current directory upwards to the root (`--git`).
-*   **Flexible Traversal**: Specify one or more starting directories or files for the tool to process.
-*   **Versatile Output**:
-    *   Output to `stdout` (default).
-    *   Save to a specific file (`--output`).
-    *   Save to a timestamped file in a specific directory (`--output-dir`).
-*   **One-Command Sharing**: Upload the generated output directly to a private GitHub Gist with the `--paste` option.
-*   **Maintenance**: Utility option to clean up previously generated `recap-output*` files (`--clear`).
+Providing comprehensive project context to Large Language Models (LLMs), new team members, or for documentation can be a tedious process of copying and pasting files. `recap` automates this by intelligently traversing your project directory, filtering files, and consolidating their structure and content into a single, clean text output.
 
-## Building the Project
+It's a powerful utility for anyone who needs to quickly package a project's source code for review, analysis, or as context for generative AI.
 
-### Dependencies
+## Key Features
 
-This project requires the following libraries:
-*   libcurl (for HTTP requests)
-*   jansson (for JSON parsing)
-*   pcre2 (for regular expressions)
+*   **Intelligent Filtering**: Use powerful regular expressions (REGEX) to include or exclude specific files and directories.
+*   **Git Integration**: Automatically respects your `.gitignore` files to exclude irrelevant content, ensuring a clean output (`--git`).
+*   **Precise Content Control**: Decide exactly which files should have their content displayed (`--include-content`) and which should only be listed by path.
+*   **Header Stripping**: Automatically remove boilerplate like license headers or comment blocks from file content using regex, on a global (`--strip`) or per-file-type basis (`--strip-scope`).
+*   **Versatile Output Modes**:
+    *   Print to **stdout** to pipe into other commands.
+    *   Save to a named file (`--output`).
+    *   Save to a timestamped file (`--output-dir`).
+    *   Copy directly to the system **clipboard** (`--clipboard`).
+    *   Upload to a private GitHub **Gist** in one command (`--paste`).
+*   **Cross-Platform**: Works on Linux, macOS, and Windows.
 
-On Debian/Ubuntu systems, you can install these dependencies with:
+## Installation
+
+### 1. Prerequisites
+
+#### Build Dependencies
+You need `make` and a C compiler, plus the development headers for the following libraries:
+*   **pcre2** (for regular expressions)
+*   **libcurl** (for Gist uploads)
+*   **jansson** (for JSON parsing for Gist uploads)
+
+**On Debian / Ubuntu:**
 ```bash
-sudo apt-get install libcurl4-openssl-dev libjansson-dev libpcre2-dev
+sudo apt-get install build-essential libpcre2-dev libcurl4-openssl-dev libjansson-dev
 ```
 
-### Build Instructions
+**On macOS (using Homebrew):**
+```bash
+brew install pcre2 curl jansson
+```
 
-1.  Clone the repository:
+#### Runtime Dependencies (Optional)
+For the clipboard feature (`-c`, `--clipboard`), `recap` relies on standard system utilities.
+
+*   **Linux**: `xclip` (for X11) or `wl-clipboard` (for Wayland).
+    ```bash
+    # For X11-based systems
+    sudo apt-get install xclip
+    # For Wayland-based systems
+    sudo apt-get install wl-clipboard
+    ```
+*   **macOS / Windows**: The necessary utilities (`pbcopy` and `clip.exe`) are pre-installed.
+
+### 2. Building from Source
+
+1.  **Clone the repository:**
     ```bash
     git clone https://github.com/trethore/RECAP.git
     cd RECAP
     ```
 
-2.  Build the project:
+2.  **Compile the project:**
     ```bash
     make
     ```
-    This will compile the source files and create the `recap` executable.
+    This will create the `recap` executable in the current directory. You can move this executable to a directory in your system's `PATH` (e.g., `/usr/local/bin`) for global access.
 
-3.  To clean the build files:
+## Usage Examples
+
+#### Basic: List all files, showing content for source and markdown
+```bash
+# Process src and docs, showing content for c, h, and md files
+recap src docs --include-content '\.(c|h|md)$'
+```
+
+#### Filtering: Use `.gitignore` and exclude test directories
+```bash
+# Use gitignore rules but also explicitly exclude any 'test' directories
+recap --git --exclude '/test/'
+```
+
+#### Clipboard: Get all Python files and copy to clipboard
+This is perfect for quickly providing context to an AI.
+```bash
+# Find all Python files, respect .gitignore, and copy the result
+recap --git --include-content '\.py$' --clipboard
+```
+
+#### Advanced: Strip license headers from JS files and upload to Gist
+A powerful one-liner to package and share code.
+```bash
+# 1. Target only .js files.
+# 2. For those files, find and strip a leading JSDoc block.
+# 3. Upload the final result to a private Gist.
+recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/\s*' --paste
+```
+
+#### Maintenance: Clean up old outputs
+```bash
+# Remove all recap-output-*.txt files from the current directory
+recap --clear
+```
+## Contributing
+
+Contributions are welcome and greatly appreciated! Whether it's reporting a bug, proposing a new feature, or submitting a code change, your help is valuable.
+
+### Reporting Bugs or Requesting Features
+
+The best way to report a bug or request a new feature is to [open an issue](https://github.com/trethore/RECAP/issues) on GitHub.
+
+*   **For Bug Reports**: Please include your operating system, the command you ran, the output you received, and what you expected to happen.
+*   **For Feature Requests**: Please provide a clear description of the feature you'd like to see and why it would be useful.
+
+### Submitting Changes (Pull Requests)
+
+If you'd like to contribute code, please follow these steps:
+
+1.  **Fork the repository** on GitHub.
+2.  **Create a new branch** for your feature or bug fix:
     ```bash
-    make clean
+    git checkout -b feature/my-new-feature
     ```
+3.  **Make your changes**. Please try to follow the existing coding style to maintain consistency.
+4.  **Test your changes** to ensure they work as expected and don't introduce new issues.
+5.  **Commit your changes** with a clear and descriptive commit message:
+    ```bash
+    git commit -m "feat: Add support for XYZ"
+    ```
+6.  **Push your branch** to your fork:
+    ```bash
+    git push origin feature/my-new-feature
+    ```
+7.  **Open a Pull Request** from your branch to the `main` branch of the original repository.
 
-## Examples
-
-#### Basic Content Inclusion
-Process the `src` and `doc` directories, showing content only for C, header, and markdown files.
-```bash
-recap src doc -I '\.(c|h|md)$'
-```
-
-#### Excluding Directories
-Process the current directory, but exclude any path starting with `obj/` or `test/`.
-```bash
-recap -e '^(obj|test)/'
-```
-
-#### Stripping Boilerplate License Headers
-Include content for all `.js` files, but use a scoped strip rule to remove the leading JSDoc-style comment block from each one.
-```bash
-recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/'
-```
-
-#### Using Gitignore and Uploading to Gist
-Process the project using `.gitignore` rules for exclusion and automatically upload the result to a private GitHub Gist.
-```bash
-recap -g --paste
-```
+Thank you for your interest in improving `recap`
