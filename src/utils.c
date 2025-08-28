@@ -121,3 +121,38 @@ int generate_output_filename(output_ctx* ctx) {
     }
     return 0;
 }
+
+int copy_file_content_to_clipboard(const char* filepath) {
+    char command[MAX_PATH_SIZE + 64];
+    int result = -1;
+
+#if defined(__APPLE__)
+    snprintf(command, sizeof(command), "cat \"%s\" | pbcopy", filepath);
+    result = system(command);
+#elif defined(_WIN32)
+    snprintf(command, sizeof(command), "clip < \"%s\"", filepath);
+    result = system(command);
+#elif defined(__linux__)
+    if (getenv("WAYLAND_DISPLAY")) {
+        snprintf(command, sizeof(command), "cat \"%s\" | wl-copy", filepath);
+        result = system(command);
+        if (result != 0) {
+            fprintf(stderr, "Warning: 'wl-copy' command failed. Is 'wl-clipboard' installed?\n");
+        }
+    }
+    else {
+        snprintf(command, sizeof(command), "cat \"%s\" | xclip -selection clipboard", filepath);
+        result = system(command);
+        if (result != 0) {
+            fprintf(stderr, "Warning: 'xclip' command failed. Is 'xclip' installed?\n");
+        }
+    }
+#else
+    fprintf(stderr, "Error: Clipboard functionality is not supported on this operating system.\n");
+    return -1;
+#endif
+
+    if (result != 0) return -1;
+
+    return 0;
+}

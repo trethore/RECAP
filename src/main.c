@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-const char* RECAP_VERSION = "2.0.0";
+const char* RECAP_VERSION = "2.0.1";
 
 static void path_list_free(path_list* list) {
     if (list) {
@@ -21,11 +21,16 @@ static void path_list_free(path_list* list) {
 }
 
 static int setup_output_stream(recap_context* ctx) {
-    if (ctx->output.output_name[0] == '\0' && ctx->output.output_dir[0] == '\0') {
+    int is_output_specified = (ctx->output.output_name[0] != '\0' || ctx->output.output_dir[0] != '\0');
+
+    if (!is_output_specified && !ctx->copy_to_clipboard) {
         ctx->output.use_stdout = 1;
         ctx->output_stream = stdout;
     }
     else {
+        if (ctx->copy_to_clipboard && !is_output_specified) {
+            ctx->output.is_temp_file = 1;
+        }
         ctx->output.use_stdout = 0;
         if (generate_output_filename(&ctx->output) != 0) {
             return 1;
@@ -52,31 +57,51 @@ static void handle_post_processing(recap_context* ctx) {
         return;
     }
 
+    int clipboard_success = 0;
+    if (ctx->copy_to_clipboard && !ctx->output.use_stdout) {
+        if (copy_file_content_to_clipboard(ctx->output.calculated_output_path) == 0) {
+            clipboard_success = 1;
+        }
+        else {
+            fprintf(stderr, "Error: Failed to copy output to clipboard.\n");
+        }
+    }
+
+    char* gist_url = NULL;
     if (ctx->gist_api_key != NULL) {
         if (ctx->gist_api_key[0] == '\0') {
             fprintf(stderr, "Error: Gist upload requested, but no API key found.\n");
-            if (!ctx->output.use_stdout) {
-                fprintf(stderr, "Output saved locally to %s\n", ctx->output.calculated_output_path);
-            }
         }
         else if (ctx->output.use_stdout) {
             fprintf(stderr, "Warning: Cannot upload to Gist when outputting to stdout.\n");
         }
         else {
             printf("Uploading to Gist...\n");
-            char* gist_url = upload_to_gist(ctx->output.calculated_output_path, ctx->gist_api_key);
-            if (gist_url) {
-                printf("Output uploaded to: %s\n", gist_url);
-                free(gist_url);
-                remove(ctx->output.calculated_output_path);
-            }
-            else {
-                fprintf(stderr, "Failed to upload to Gist. Output saved locally to %s\n", ctx->output.calculated_output_path);
-            }
+            gist_url = upload_to_gist(ctx->output.calculated_output_path, ctx->gist_api_key);
         }
     }
+
+    if (clipboard_success) {
+        printf("Output copied to clipboard.\n");
+    }
+
+    if (gist_url) {
+        printf("Output uploaded to: %s\n", gist_url);
+        free(gist_url);
+        remove(ctx->output.calculated_output_path);
+    }
+    else if (ctx->output.is_temp_file) {
+        remove(ctx->output.calculated_output_path);
+    }
     else if (!ctx->output.use_stdout) {
-        printf("Output written to %s\n", ctx->output.calculated_output_path);
+        if (ctx->gist_api_key != NULL) {
+            fprintf(stderr, "Failed to upload to Gist. Output saved locally to %s\n", ctx->output.calculated_output_path);
+        }
+        else {
+            if (!ctx->copy_to_clipboard) {
+                printf("Output written to %s\n", ctx->output.calculated_output_path);
+            }
+        }
     }
 }
 

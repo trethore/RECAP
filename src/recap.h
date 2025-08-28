@@ -40,6 +40,7 @@ typedef struct {
     char calculated_output_path[MAX_PATH_SIZE];
     char relative_output_path[MAX_PATH_SIZE];
     int use_stdout;
+    int is_temp_file;
 } output_ctx;
 
 typedef struct {
@@ -68,6 +69,7 @@ typedef struct {
     const char* gist_api_key;
     const char* version;
     FILE* output_stream;
+    int copy_to_clipboard;
 } recap_context;
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx);
@@ -83,5 +85,7 @@ int generate_output_filename(output_ctx* output_context);
 void get_relative_path(const char* full_path, const char* cwd, char* rel_path_out, size_t size);
 
 char* upload_to_gist(const char* filepath, const char* github_token);
+
+int copy_file_content_to_clipboard(const char* filepath);
 
 #endif

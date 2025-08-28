@@ -154,6 +154,7 @@ void print_help(const char* version) {
     printf("  -o, --output <FILE>                Specify the output file name (disables stdout).\n");
     printf("  -O, --output-dir <DIR>             Specify the output directory (disables stdout).\n");
     printf("  -p, --paste [KEY]                  Upload output to Gist (uses GITHUB_API_KEY from env).\n");
+    printf("  -c, --clipboard                    Copy the output to the system clipboard.\n");
 
     printf("\nExamples:\n");
     printf("  recap src doc -I '\\.(c|h|md)$'\n");
@@ -173,10 +174,10 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
     ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] = ".git/";
 
     static struct option long_options[] = {
-        {"help", no_argument, 0, 'h'}, {"version", no_argument, 0, 'v'}, {"clear", optional_argument, 0, 'C'}, {"include", required_argument, 0, 'i'}, {"exclude", required_argument, 0, 'e'}, {"include-content", required_argument, 0, 'I'}, {"exclude-content", required_argument, 0, 'E'}, {"strip", required_argument, 0, 's'}, {"strip-scope", required_argument, 0, 'S'}, {"git", optional_argument, 0, 'g'}, {"paste", optional_argument, 0, 'p'}, {"output", required_argument, 0, 'o'}, {"output-dir", required_argument, 0, 'O'}, {0, 0, 0, 0}};
+        {"help", no_argument, 0, 'h'}, {"version", no_argument, 0, 'v'}, {"clear", optional_argument, 0, 'C'}, {"include", required_argument, 0, 'i'}, {"exclude", required_argument, 0, 'e'}, {"include-content", required_argument, 0, 'I'}, {"exclude-content", required_argument, 0, 'E'}, {"strip", required_argument, 0, 's'}, {"strip-scope", required_argument, 0, 'S'}, {"git", optional_argument, 0, 'g'}, {"paste", optional_argument, 0, 'p'}, {"output", required_argument, 0, 'o'}, {"output-dir", required_argument, 0, 'O'}, {"clipboard", no_argument, 0, 'c'}, {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_help(ctx->version);
@@ -225,6 +226,9 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             break;
         case 'O':
             strncpy(ctx->output.output_dir, optarg, sizeof(ctx->output.output_dir) - 1);
+            break;
+        case 'c':
+            ctx->copy_to_clipboard = 1;
             break;
         default:
             exit(1);
