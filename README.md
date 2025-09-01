@@ -16,7 +16,11 @@ It's a powerful utility for anyone who needs to quickly package a project's sour
 *   **Git Integration**: Automatically respects your `.gitignore` files to exclude irrelevant content, ensuring a clean output (`--git`).
 *   **Precise Content Control**: Decide exactly which files should have their content displayed (`--include-content`) and which should only be listed by path.
 *   **Header Stripping**: Automatically remove boilerplate like license headers or comment blocks from file content using regex, on a global (`--strip`) or per-file-type basis (`--strip-scope`).
-*   **Content Compaction**: Optionally removes comments and redundant whitespace from file content to create a denser, token-efficient output for LLMs (`--compact`).
+*   **Content Compaction**: Optionally removes comments and redundant whitespace from file content to create a denser, token‑efficient output for LLMs (`--compact`). Language‑aware behavior:
+    *   C/C++/Java/JS/TS/Go: removes `//` and `/* ... */` comments; trims redundant spaces.
+    *   CSS: removes `/* ... */` comments; trims redundant spaces.
+    *   Python/Shell/Ruby/Perl: removes `#` comments; preserves strings.
+    *   JSON: minifies by removing insignificant whitespace outside strings.
 *   **Versatile Output Modes**:
     *   Print to **stdout** to pipe into other commands.
     *   Save to a named file (`--output`).
@@ -85,6 +89,8 @@ recap src docs --include-content '\.(c|h|md)$'
 recap --git --exclude '/test/'
 ```
 
+You can optionally point `--git` at a specific ignore file: `recap --git .myignore`.
+
 #### Clipboard: Get all Python files and copy to clipboard
 This is perfect for quickly providing context to an AI.
 ```bash
@@ -101,11 +107,22 @@ A powerful one-liner to package and share code.
 recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/\s*' --paste
 ```
 
+#### Compact: Minify JSON and strip code comments
+```bash
+# Minify JSON and compact common source files, respecting .gitignore
+recap --git --compact -I '\.(c|h|cpp|hpp|js|ts|go|json)$'
+```
+
 #### Maintenance: Clean up old outputs
 ```bash
 # Remove all recap-output-*.txt files from the current directory
 recap --clear
 ```
+
+## Notes & Limits
+
+- Gist uploads: private Gists via `--paste` use `GITHUB_API_KEY` by default; you can also pass a token directly: `--paste <KEY>`.
+- File size caps: individual file content blocks are limited to 10 MB; files larger than this are not inlined in the output. Gist uploads also enforce a 10 MB limit.
 ## Contributing
 
 Contributions are welcome and greatly appreciated! Whether it's reporting a bug, proposing a new feature, or submitting a code change, your help is valuable.

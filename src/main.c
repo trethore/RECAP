@@ -8,18 +8,6 @@
 
 const char* RECAP_VERSION = "2.0.1";
 
-static void path_list_free(path_list* list) {
-    if (list) {
-        for (size_t i = 0; i < list->count; i++) {
-            free(list->items[i]);
-        }
-        free(list->items);
-        list->items = NULL;
-        list->count = 0;
-        list->capacity = 0;
-    }
-}
-
 static int setup_output_stream(recap_context* ctx) {
     int is_output_specified = (ctx->output.output_name[0] != '\0' || ctx->output.output_dir[0] != '\0');
 

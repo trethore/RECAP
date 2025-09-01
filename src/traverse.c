@@ -7,28 +7,6 @@
 #include <string.h>
 #include <unistd.h>
 
-static int path_list_init(path_list* list) {
-    list->items = malloc(16 * sizeof(char*));
-    if (!list->items) return -1;
-    list->count = 0;
-    list->capacity = 16;
-    return 0;
-}
-
-static int path_list_add(path_list* list, const char* path) {
-    if (list->count >= list->capacity) {
-        size_t new_capacity = list->capacity * 2;
-        char** new_items = realloc(list->items, new_capacity * sizeof(char*));
-        if (!new_items) return -1;
-        list->items = new_items;
-        list->capacity = new_capacity;
-    }
-    list->items[list->count] = strdup(path);
-    if (!list->items[list->count]) return -1;
-    list->count++;
-    return 0;
-}
-
 static int match_regex_list(const regex_ctx* ctx, const char* str) {
     pcre2_match_data* match_data = pcre2_match_data_create(1, NULL);
     if (!match_data) return 0;
@@ -87,52 +65,29 @@ static int should_show_content(const char* rel_path, const char* full_path, reca
 
 static void write_file_content_block(const char* full_path, const char* rel_path, recap_context* ctx) {
     fprintf(ctx->output_stream, "%s:\n", rel_path);
-
-    FILE* f = fopen(full_path, "rb");
-    if (!f) {
-        fprintf(ctx->output_stream, "[Error reading file content]\n");
-        return;
-    }
-
-    fseek(f, 0, SEEK_END);
-    long file_size = ftell(f);
-    fseek(f, 0, SEEK_SET);
-
-    if (file_size > MAX_FILE_CONTENT_SIZE) {
+    char* content_buffer = NULL;
+    size_t file_size = 0;
+    int rf = read_file_into_buffer(full_path, MAX_FILE_CONTENT_SIZE, &content_buffer, &file_size);
+    if (rf == -2) {
         fprintf(ctx->output_stream, "[File content too large to process (>%dMB)]\n", MAX_FILE_CONTENT_SIZE / (1024 * 1024));
-        fclose(f);
         return;
     }
-
-    char* content_buffer = malloc(file_size + 1);
-    if (!content_buffer) {
-        fprintf(ctx->output_stream, "[Error: could not allocate memory for file content]\n");
-        fclose(f);
-        return;
-    }
-
-    if (fread(content_buffer, 1, file_size, f) != (size_t)file_size) {
+    if (rf != 0) {
         fprintf(ctx->output_stream, "[Error reading file content]\n");
-        free(content_buffer);
-        fclose(f);
         return;
     }
-    content_buffer[file_size] = '\0';
-    fclose(f);
 
     const char* content_after_strip = content_buffer;
     pcre2_code* strip_regex_to_use = NULL;
 
-    for (int i = 0; i < ctx->scoped_strip_rule_count; i++) {
-        pcre2_match_data* match_data = pcre2_match_data_create(1, NULL);
-        if (match_data) {
-            if (pcre2_match(ctx->scoped_strip_rules[i].path_regex, (PCRE2_SPTR)rel_path, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL) >= 0) {
-                strip_regex_to_use = ctx->scoped_strip_rules[i].strip_regex;
-                break;
-            }
-            pcre2_match_data_free(match_data);
+    pcre2_match_data* path_md = pcre2_match_data_create(1, NULL);
+    for (int i = 0; path_md && i < ctx->scoped_strip_rule_count; i++) {
+        if (pcre2_match(ctx->scoped_strip_rules[i].path_regex, (PCRE2_SPTR)rel_path, PCRE2_ZERO_TERMINATED, 0, 0, path_md, NULL) >= 0) {
+            strip_regex_to_use = ctx->scoped_strip_rules[i].strip_regex;
+            break;
         }
     }
+    if (path_md) pcre2_match_data_free(path_md);
     if (!strip_regex_to_use && ctx->strip_regex_is_set) {
         strip_regex_to_use = ctx->strip_regex;
     }
@@ -203,13 +158,9 @@ static void print_output(recap_context* ctx) {
 }
 
 static void traverse_directory(const char* base_path, const char* rel_path_prefix, recap_context* ctx) {
-    DIR* dir = opendir(base_path);
-    if (!dir) return;
-
     struct dirent** namelist;
     int n = scandir(base_path, &namelist, NULL, alphasort);
     if (n < 0) {
-        closedir(dir);
         return;
     }
 
@@ -259,7 +210,6 @@ static void traverse_directory(const char* base_path, const char* rel_path_prefi
         free(namelist[i]);
     }
     free(namelist);
-    closedir(dir);
 }
 
 int start_traversal(recap_context* ctx) {

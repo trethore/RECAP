@@ -4,74 +4,243 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-static char* remove_matches(const char* input, const char* pattern_str, uint32_t options) {
-    pcre2_code* re;
-    int error_code;
-    PCRE2_SIZE error_offset;
-
-    re = pcre2_compile((PCRE2_SPTR)pattern_str, PCRE2_ZERO_TERMINATED, options, &error_code, &error_offset, NULL);
-    if (re == NULL) {
-        return strdup(input);
-    }
-
-    PCRE2_SIZE outlen = 0;
-    int rc = pcre2_substitute(re, (PCRE2_SPTR)input, PCRE2_ZERO_TERMINATED, 0, PCRE2_SUBSTITUTE_GLOBAL, NULL, NULL, (PCRE2_SPTR)"", 0, NULL, &outlen);
-
-    if (rc < 0 && rc != PCRE2_ERROR_NOMEMORY) {
-        pcre2_code_free(re);
-        return strdup(input);
-    }
-
-    PCRE2_UCHAR* output_buffer = malloc(outlen);
-    if (!output_buffer) {
-        pcre2_code_free(re);
-        return strdup(input);
-    }
-
-    rc = pcre2_substitute(re, (PCRE2_SPTR)input, PCRE2_ZERO_TERMINATED, 0, PCRE2_SUBSTITUTE_GLOBAL, NULL, NULL, (PCRE2_SPTR)"", 0, output_buffer, &outlen);
-    pcre2_code_free(re);
-
-    if (rc < 0) {
-        free(output_buffer);
-        return strdup(input);
-    }
-
-    char* result = strdup((char*)output_buffer);
-    free(output_buffer);
-    return result ? result : strdup("");
+static int is_ident_char(int c) {
+    return isalnum((unsigned char)c) || c == '_';
 }
 
+static char* shrink_buffer(char* buf, size_t len) {
+    char* r = realloc(buf, len + 1);
+    return r ? r : buf;
+}
+
+static char* compact_c_like(const char* input, int allow_line, int allow_block) {
+    size_t n = strlen(input);
+    char* out = malloc(n + 1);
+    if (!out) return strdup("");
+
+    size_t o = 0;
+    int in_line = 0, in_block = 0, in_str = 0, in_chr = 0, esc = 0;
+    int pending_space = 0;
+    int last_ident = 0;
+    char quote = 0;
+
+    for (size_t i = 0; i < n; i++) {
+        char c = input[i];
+
+        if (in_line) {
+            if (c == '\n') {
+                out[o++] = '\n';
+                in_line = 0;
+                last_ident = 0;
+            }
+            continue;
+        }
+        if (in_block) {
+            if (c == '*' && i + 1 < n && input[i + 1] == '/') {
+                i++;
+                in_block = 0;
+                continue;
+            }
+            if (c == '\n') {
+                out[o++] = '\n';
+                last_ident = 0;
+            }
+            continue;
+        }
+        if (in_str) {
+            out[o++] = c;
+            if (!esc) {
+                if (c == '\\') {
+                    esc = 1;
+                } else if (c == quote) {
+                    in_str = 0;
+                }
+            } else {
+                esc = 0;
+            }
+            continue;
+        }
+        if (in_chr) {
+            out[o++] = c;
+            if (!esc) {
+                if (c == '\\') {
+                    esc = 1;
+                } else if (c == '\'') {
+                    in_chr = 0;
+                }
+            } else {
+                esc = 0;
+            }
+            continue;
+        }
+
+        if (allow_block && c == '/' && i + 1 < n && input[i + 1] == '*') {
+            i++;
+            in_block = 1;
+            continue;
+        }
+        if (allow_line && c == '/' && i + 1 < n && input[i + 1] == '/') {
+            i++;
+            in_line = 1;
+            continue;
+        }
+
+        if (c == ' ' || c == '\t' || c == '\r') {
+            pending_space = 1;
+            continue;
+        }
+        if (c == '\n') {
+            out[o++] = '\n';
+            pending_space = 0;
+            last_ident = 0;
+            continue;
+        }
+
+        if (pending_space) {
+            int curr_ident = is_ident_char((unsigned char)c);
+            if (last_ident && (curr_ident || c == '"' || c == '<')) {
+                out[o++] = ' ';
+            }
+            pending_space = 0;
+        }
+
+        if (c == '"') {
+            out[o++] = c;
+            in_str = 1;
+            quote = '"';
+            esc = 0;
+            last_ident = 0;
+            continue;
+        }
+        if (c == '\'') {
+            out[o++] = c;
+            in_chr = 1;
+            esc = 0;
+            last_ident = 0;
+            continue;
+        }
+
+        out[o++] = c;
+        last_ident = is_ident_char((unsigned char)c);
+    }
+    out[o] = '\0';
+    return shrink_buffer(out, o);
+}
+
+static char* compact_hash_style(const char* input) {
+    size_t n = strlen(input);
+    char* out = malloc(n + 1);
+    if (!out) return strdup("");
+    size_t o = 0;
+    int in_str = 0, triple = 0, esc = 0;
+    char quote = 0;
+
+    for (size_t i = 0; i < n; i++) {
+        char c = input[i];
+        if (in_str) {
+            out[o++] = c;
+            if (triple) {
+                if (c == quote && i + 2 < n && input[i + 1] == quote && input[i + 2] == quote) {
+                    out[o++] = input[i + 1];
+                    out[o++] = input[i + 2];
+                    i += 2;
+                    in_str = 0;
+                    triple = 0;
+                }
+            } else {
+                if (!esc) {
+                    if (c == '\\') esc = 1;
+                    else if (c == quote) in_str = 0;
+                } else {
+                    esc = 0;
+                }
+            }
+            continue;
+        }
+
+        if (c == '"' || c == '\'') {
+            if (i + 2 < n && input[i + 1] == c && input[i + 2] == c) {
+                out[o++] = c; out[o++] = c; out[o++] = c;
+                i += 2;
+                in_str = 1; triple = 1; quote = c; esc = 0;
+            } else {
+                out[o++] = c;
+                in_str = 1; triple = 0; quote = c; esc = 0;
+            }
+            continue;
+        }
+
+        if (c == '#') {
+            while (i < n && input[i] != '\n') i++;
+            if (i < n && input[i] == '\n') out[o++] = '\n';
+            continue;
+        }
+
+        out[o++] = c;
+    }
+    out[o] = '\0';
+    return shrink_buffer(out, o);
+}
+
+static char* compact_json_minify(const char* input) {
+    size_t n = strlen(input);
+    char* out = malloc(n + 1);
+    if (!out) return strdup("");
+    size_t o = 0;
+    int in_str = 0, esc = 0;
+    for (size_t i = 0; i < n; i++) {
+        char c = input[i];
+        if (in_str) {
+            out[o++] = c;
+            if (!esc) {
+                if (c == '\\') esc = 1;
+                else if (c == '"') in_str = 0;
+            } else {
+                esc = 0;
+            }
+            continue;
+        }
+        if (c == '"') {
+            out[o++] = c;
+            in_str = 1; esc = 0;
+            continue;
+        }
+        if (c == ' ' || c == '\t' || c == '\n' || c == '\r') continue;
+        out[o++] = c;
+    }
+    out[o] = '\0';
+    return shrink_buffer(out, o);
+}
 
 char* apply_compact_transformations(const char* content, const char* filename) {
-    char* temp1 = NULL;
-    char* temp2 = NULL;
-
+    char* intermediate = NULL;
     const char* ext = strrchr(filename, '.');
+
     if (ext) {
-        if (strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 || strcmp(ext, ".cpp") == 0 ||
+        if (strcmp(ext, ".json") == 0) {
+            intermediate = compact_json_minify(content);
+        } else if (
+            strcmp(ext, ".c") == 0 || strcmp(ext, ".h") == 0 || strcmp(ext, ".cpp") == 0 ||
             strcmp(ext, ".hpp") == 0 || strcmp(ext, ".java") == 0 || strcmp(ext, ".js") == 0 ||
-            strcmp(ext, ".ts") == 0 || strcmp(ext, ".css") == 0 || strcmp(ext, ".go") == 0) {
-
-            temp1 = remove_matches(content, "/\\*.*?\\*/", PCRE2_DOTALL);
-            temp2 = remove_matches(temp1, "//.*", 0);
-            free(temp1);
-        }
-        else if (strcmp(ext, ".py") == 0 || strcmp(ext, ".sh") == 0 || strcmp(ext, ".rb") == 0 || strcmp(ext, ".pl") == 0) {
-            temp2 = remove_matches(content, "#.*", 0);
-        }
-        else {
-            temp2 = strdup(content);
+            strcmp(ext, ".ts") == 0 || strcmp(ext, ".go") == 0) {
+            intermediate = compact_c_like(content, 1, 1);
+        } else if (strcmp(ext, ".css") == 0) {
+            intermediate = compact_c_like(content, 0, 1);
+        } else if (
+            strcmp(ext, ".py") == 0 || strcmp(ext, ".sh") == 0 || strcmp(ext, ".rb") == 0 || strcmp(ext, ".pl") == 0) {
+            intermediate = compact_hash_style(content);
         }
     }
-    else {
-        temp2 = strdup(content);
+
+    if (!intermediate) {
+        intermediate = strdup(content);
     }
 
-    const char* p = temp2;
+    const char* p = intermediate;
     size_t original_len = strlen(p);
     char* result_buffer = malloc(original_len + 1);
     if (!result_buffer) {
-        free(temp2);
+        free(intermediate);
         return strdup("");
     }
     char* q = result_buffer;
@@ -96,13 +265,12 @@ char* apply_compact_transformations(const char* content, const char* filename) {
 
         if (end_of_line) {
             p = end_of_line + 1;
-        }
-        else {
+        } else {
             break;
         }
     }
     *q = '\0';
-    free(temp2);
+    free(intermediate);
 
     char* final_result = realloc(result_buffer, strlen(result_buffer) + 1);
     return final_result ? final_result : result_buffer;

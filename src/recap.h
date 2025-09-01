@@ -85,6 +85,12 @@ void normalize_path(char* path);
 int generate_output_filename(output_ctx* output_context);
 void get_relative_path(const char* full_path, const char* cwd, char* rel_path_out, size_t size);
 
+int path_list_init(path_list* list);
+int path_list_add(path_list* list, const char* path);
+void path_list_free(path_list* list);
+
+int read_file_into_buffer(const char* path, size_t max_bytes, char** out_buf, size_t* out_len);
+
 char* upload_to_gist(const char* filepath, const char* github_token);
 
 int copy_file_content_to_clipboard(const char* filepath);

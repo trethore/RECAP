@@ -31,32 +31,6 @@ static size_t WriteMemoryCallback(void* contents, size_t size, size_t nmemb, voi
     return realsize;
 }
 
-static char* read_file_content(const char* filepath, long* filesize) {
-    FILE* file = fopen(filepath, "rb");
-    if (!file) {
-        perror("fopen for gist upload");
-        return NULL;
-    }
-
-    char* content = malloc(*filesize + 1);
-    if (!content) {
-        fprintf(stderr, "Gist upload error: Memory allocation failed for file content.\n");
-        fclose(file);
-        return NULL;
-    }
-
-    if (fread(content, 1, *filesize, file) != (size_t)*filesize) {
-        fprintf(stderr, "Gist upload error: Error reading file %s.\n", filepath);
-        free(content);
-        fclose(file);
-        return NULL;
-    }
-
-    content[*filesize] = '\0';
-    fclose(file);
-    return content;
-}
-
 static char* create_gist_payload(const char* filename, const char* content) {
     json_t* root, * files_obj, * file_obj;
     root = json_object();
@@ -95,8 +69,12 @@ char* upload_to_gist(const char* filepath, const char* github_token) {
         return NULL;
     }
 
-    char* file_content = read_file_content(filepath, &st.st_size);
-    if (!file_content) return NULL;
+    char* file_content = NULL;
+    size_t file_len = 0;
+    if (read_file_into_buffer(filepath, GIST_MAX_FILESIZE, &file_content, &file_len) != 0) {
+        fprintf(stderr, "Gist upload error: Failed to read file '%s'.\n", filepath);
+        return NULL;
+    }
 
     const char* filename_only = strrchr(filepath, '/');
     filename_only = filename_only ? filename_only + 1 : filepath;
