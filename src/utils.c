@@ -124,6 +124,20 @@ int generate_output_filename(output_ctx* ctx) {
     const char* dir = (strlen(ctx->output_dir) > 0) ? ctx->output_dir : ".";
     int len;
 
+    if (strcmp(dir, ".") != 0) {
+        struct stat st;
+        if (stat(dir, &st) != 0) {
+            if (mkdir(dir, 0755) != 0) {
+                perror("mkdir output dir");
+                return -1;
+            }
+        }
+        else if (!S_ISDIR(st.st_mode)) {
+            fprintf(stderr, "Error: output path exists and is not a directory: %s\n", dir);
+            return -1;
+        }
+    }
+
     if (strlen(ctx->output_name) > 0) {
         len = snprintf(combined_path, sizeof(combined_path), "%s/%s", dir, ctx->output_name);
     }

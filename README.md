@@ -112,11 +112,40 @@ recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/\s*' --paste
 # Minify JSON and compact common source files, respecting .gitignore
 recap --git --compact -I '\.(c|h|cpp|hpp|js|ts|go|json)$'
 ```
-
 #### Maintenance: Clean up old outputs
+
 ```bash
 # Remove all recap-output-*.txt files from the current directory
 recap --clear
+```
+
+## Running Tests
+
+- **Command**: `make test` — Build and run the integration test suite.
+- **Alternative**: `bash test/run-integration-tests.sh` — Run the test runner directly.
+
+Notes:
+- **Build step**: The `test` target will build the `recap` binary if it's missing; ensure the development headers for `pcre2`, `libcurl`, and `jansson` are installed.
+- **Environment**: The test runner copies `test/` into a temporary workspace and executes the repository `recap` binary. Set the `RECAP_BIN` environment variable to override the binary path if needed.
+
+## Benchmarking
+
+- **Flag**: `--benchmark[=FILE]` — Enable lightweight benchmarking; writes CSV output to `FILE` if provided, otherwise prints to stdout.
+- **Sampling**: `--benchmark-sample N` — Only sample 1 in `N` file content operations to reduce overhead when benchmarking large projects.
+
+CSV format: `name,count,total_ms,avg_ms,min_ms,max_ms`.
+- **name**: The benchmarked operation (for example `total_run`).
+- **count**: Number of times the operation ran.
+- **total_ms**: Total time spent (milliseconds) across all runs.
+
+Examples:
+
+```bash
+# Print benchmark CSV to stdout
+recap --benchmark test
+
+# Write benchmark CSV to a file and sample 1 in 100 file operations
+recap --benchmark=bench.csv --benchmark-sample 100 test
 ```
 
 ## Notes & Limits

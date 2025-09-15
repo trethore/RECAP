@@ -1,10 +1,12 @@
 #define _POSIX_C_SOURCE 200809L
 #include "recap.h"
+#include "bench.h"
 #include <curl/curl.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <time.h>
 
 const char* RECAP_VERSION = "2.0.1";
 
@@ -94,7 +96,7 @@ static void handle_post_processing(recap_context* ctx) {
 }
 
 int main(int argc, char* argv[]) {
-    recap_context ctx = { 0 };
+    recap_context ctx = {0};
     int result = 0;
 
     ctx.version = RECAP_VERSION;
@@ -112,12 +114,21 @@ int main(int argc, char* argv[]) {
 
     parse_arguments(argc, argv, &ctx);
 
+    bench_init(ctx.bench_output_path, ctx.bench_enabled, ctx.bench_sample_rate);
+
     if (setup_output_stream(&ctx) != 0) {
         result = 1;
         goto cleanup;
     }
 
+    struct timespec _bench_start, _bench_end;
+    clock_gettime(CLOCK_MONOTONIC, &_bench_start);
     start_traversal(&ctx);
+    clock_gettime(CLOCK_MONOTONIC, &_bench_end);
+    double _total_ms = (_bench_end.tv_sec - _bench_start.tv_sec) * 1000.0 + (_bench_end.tv_nsec - _bench_start.tv_nsec) / 1e6;
+    if (bench_is_enabled()) {
+        bench_record_ms("total_run", _total_ms);
+    }
 
     if (ctx.output_stream && ctx.output_stream != stdout) {
         fclose(ctx.output_stream);
@@ -142,6 +153,8 @@ cleanup:
         pcre2_code_free(ctx.scoped_strip_rules[i].path_regex);
         pcre2_code_free(ctx.scoped_strip_rules[i].strip_regex);
     }
+    bench_shutdown();
+
     curl_global_cleanup();
     return result;
 }

@@ -16,6 +16,11 @@ OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
 
 all: $(EXEC)
 
+.PHONY: test
+test: all
+	@bash test/run-integration-tests.sh
+
+
 $(EXEC): $(OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 

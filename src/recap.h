@@ -71,6 +71,10 @@ typedef struct {
     FILE* output_stream;
     int copy_to_clipboard;
     int compact_output;
+
+    int bench_enabled;
+    char bench_output_path[MAX_PATH_SIZE];
+    int bench_sample_rate;
 } recap_context;
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx);

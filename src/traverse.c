@@ -25,10 +25,24 @@ static int match_regex_list(const regex_ctx* ctx, const char* str) {
 static int match_fnmatch_list(const fnmatch_ctx* ctx, const char* path_to_check) {
     for (int i = 0; i < ctx->count; i++) {
         const char* pattern = ctx->patterns[i];
+
         if (fnmatch(pattern, path_to_check, FNM_PATHNAME | FNM_PERIOD) == 0) return 1;
+
         size_t len = strlen(pattern);
+
         if (len > 0 && pattern[len - 1] == '/') {
-            if (strncmp(path_to_check, pattern, len) == 0) return 1;
+            if (strstr(path_to_check, pattern) != NULL) return 1;
+        }
+        else {
+            if (strchr(pattern, '/') == NULL) {
+                char needle[MAX_PATH_SIZE];
+                int n = snprintf(needle, sizeof(needle), "/%s/", pattern);
+                if (n > 0 && (size_t)n < sizeof(needle)) {
+                    if (strstr(path_to_check, needle) != NULL) return 1;
+                }
+                n = snprintf(needle, sizeof(needle), "%s/", pattern);
+                if (n > 0 && strncmp(path_to_check, needle, strlen(needle)) == 0) return 1;
+            }
         }
     }
     return 0;

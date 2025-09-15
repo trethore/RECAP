@@ -156,6 +156,8 @@ void print_help(const char* version) {
     printf("  -O, --output-dir <DIR>             Specify the output directory (disables stdout).\n");
     printf("  -p, --paste [KEY]                  Upload output to Gist (uses GITHUB_API_KEY from env).\n");
     printf("  -c, --clipboard                    Copy the output to the system clipboard.\n");
+    printf("      --benchmark[=FILE]             Enable lightweight benchmarking and write CSV to FILE (default stdout).\n");
+    printf("      --benchmark-sample N           Only sample 1 in N file content operations to reduce overhead.\n");
 
     printf("\nExamples:\n");
     printf("  recap src doc -I '\\.(c|h|md)$'\n");
@@ -173,6 +175,11 @@ void print_help(const char* version) {
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx) {
     ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] = ".git/";
+    ctx->bench_enabled = 0;
+    ctx->bench_output_path[0] = '\0';
+    ctx->bench_sample_rate = 1;
+
+    opterr = 0;
 
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
@@ -190,10 +197,12 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         {"output-dir", required_argument, 0, 'O'},
         {"clipboard", no_argument, 0, 'c'},
         {"compact", no_argument, 0, 256},
+        {"benchmark", optional_argument, 0, 512},
+        {"benchmark-sample", required_argument, 0, 513},
         {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:s:S:g::p::o:O:,", long_options, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_help(ctx->version);
@@ -224,7 +233,7 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             break;
         case 'S':
             if (optind >= argc) {
-                fprintf(stderr, "Error: --strip-scope requires two arguments: a path regex and a strip regex.\n");
+                fprintf(stderr, "Error: --strip-scope requires two arguments\n");
                 exit(1);
             }
             add_scoped_strip_rule(ctx, optarg, argv[optind]);
@@ -249,6 +258,27 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         case 256:
             ctx->compact_output = 1;
             break;
+        case 512:
+            ctx->bench_enabled = 1;
+            if (optarg) {
+                strncpy(ctx->bench_output_path, optarg, sizeof(ctx->bench_output_path) - 1);
+            }
+            break;
+        case 513:
+            ctx->bench_sample_rate = atoi(optarg);
+            if (ctx->bench_sample_rate <= 0) ctx->bench_sample_rate = 1;
+            break;
+        case '?': {
+            const char* problem = NULL;
+            if (optind > 0 && optind <= argc) problem = argv[optind - 1];
+            if (problem && strcmp(problem, "--strip-scope") == 0) {
+                fprintf(stderr, "Error: --strip-scope requires two arguments\n");
+            }
+            else {
+                fprintf(stderr, "Error: Invalid option or missing argument\n");
+            }
+            exit(1);
+        }
         default:
             exit(1);
         }
