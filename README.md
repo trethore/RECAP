@@ -56,6 +56,16 @@ sudo apt-get install libcurl4-openssl-dev libjansson-dev
   make clean
   ```
 
+### Installation
+
+Build and install the compiled `recap` binary on your system:
+
+ ```bash
+ make install
+ ```
+
+Uninstall with `make uninstall`.
+
 ### Build Configuration
 
 The project is compiled with the following flags:
