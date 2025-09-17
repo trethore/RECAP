@@ -14,13 +14,19 @@
 #define MAX_FILE_CONTENT_SIZE (10 * 1024 * 1024) // 10MB
 
 typedef struct {
-    char** items;
+    char* full_path;
+    char* rel_path;
+} path_entry;
+
+typedef struct {
+    path_entry* items;
     size_t count;
     size_t capacity;
 } path_list;
 
 typedef struct {
     pcre2_code* compiled[MAX_PATTERNS];
+    pcre2_match_data* match_data[MAX_PATTERNS];
     int count;
 } regex_ctx;
 
@@ -72,9 +78,6 @@ typedef struct {
     int copy_to_clipboard;
     int compact_output;
 
-    int bench_enabled;
-    char bench_output_path[MAX_PATH_SIZE];
-    int bench_sample_rate;
 } recap_context;
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx);
@@ -90,8 +93,9 @@ int generate_output_filename(output_ctx* output_context);
 void get_relative_path(const char* full_path, const char* cwd, char* rel_path_out, size_t size);
 
 int path_list_init(path_list* list);
-int path_list_add(path_list* list, const char* path);
+int path_list_add(path_list* list, const char* full_path, const char* rel_path);
 void path_list_free(path_list* list);
+void path_list_sort(path_list* list);
 
 int read_file_into_buffer(const char* path, size_t max_bytes, char** out_buf, size_t* out_len);
 

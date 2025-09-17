@@ -130,22 +130,22 @@ Notes:
 
 ## Benchmarking
 
-- **Flag**: `--benchmark[=FILE]` — Enable lightweight benchmarking; writes CSV output to `FILE` if provided, otherwise prints to stdout.
-- **Sampling**: `--benchmark-sample N` — Only sample 1 in `N` file content operations to reduce overhead when benchmarking large projects.
+- **Command**: `make bench` — Build (if needed) and run the benchmark harness.
+- **Alternative**: `bash test/run-benchmarks.sh` — Run the harness directly.
 
-CSV format: `name,count,total_ms,avg_ms,min_ms,max_ms`.
-- **name**: The benchmarked operation (for example `total_run`).
-- **count**: Number of times the operation ran.
-- **total_ms**: Total time spent (milliseconds) across all runs.
+The benchmark runner executes `recap test` repeatedly in a temporary workspace and
+reports Criterion-style statistics (min/avg/max, median, and standard deviation).
+Use `--runs N` to control how many iterations are performed and `--show-runs` to
+print the duration of each individual run.
 
 Examples:
 
 ```bash
-# Print benchmark CSV to stdout
-recap --benchmark test
+# Default 100-run benchmark
+make bench
 
-# Write benchmark CSV to a file and sample 1 in 100 file operations
-recap --benchmark=bench.csv --benchmark-sample 100 test
+# Twenty runs with per-run timings
+bash test/run-benchmarks.sh --runs 20 --show-runs
 ```
 
 ## Notes & Limits

@@ -30,6 +30,13 @@ static int add_regex(regex_ctx* ctx, const char* pattern) {
     if (add_regex_internal(&ctx->compiled[ctx->count], pattern, 0) != 0) {
         return -1;
     }
+    ctx->match_data[ctx->count] = pcre2_match_data_create_from_pattern(ctx->compiled[ctx->count], NULL);
+    if (!ctx->match_data[ctx->count]) {
+        fprintf(stderr, "Error: Could not allocate match data for regex '%s'\n", pattern);
+        pcre2_code_free(ctx->compiled[ctx->count]);
+        ctx->compiled[ctx->count] = NULL;
+        return -1;
+    }
     ctx->count++;
     return 0;
 }
@@ -57,7 +64,14 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
 
 void free_regex_ctx(regex_ctx* ctx) {
     for (int i = 0; i < ctx->count; i++) {
-        pcre2_code_free(ctx->compiled[i]);
+        if (ctx->compiled[i]) {
+            pcre2_code_free(ctx->compiled[i]);
+            ctx->compiled[i] = NULL;
+        }
+        if (ctx->match_data[i]) {
+            pcre2_match_data_free(ctx->match_data[i]);
+            ctx->match_data[i] = NULL;
+        }
     }
     ctx->count = 0;
 }
@@ -120,10 +134,18 @@ void load_gitignore(recap_context* ctx, const char* gitignore_filename_arg) {
                 char* trimmed = line;
                 while (isspace((unsigned char)*trimmed)) trimmed++;
                 if (*trimmed == '\0' || *trimmed == '#') continue;
-                if (ctx->fnmatch_exclude_filters.count < MAX_PATTERNS) {
-                    strncpy(ctx->gitignore_entries[ctx->gitignore_entry_count], trimmed, MAX_PATH_SIZE - 1);
-                    ctx->gitignore_entries[ctx->gitignore_entry_count][MAX_PATH_SIZE - 1] = '\0';
-                    ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] = ctx->gitignore_entries[ctx->gitignore_entry_count++];
+                if (ctx->fnmatch_exclude_filters.count < MAX_PATTERNS &&
+                    ctx->gitignore_entry_count < MAX_GITIGNORE_ENTRIES) {
+                    size_t trimmed_len = strnlen(trimmed, MAX_PATH_SIZE);
+                    if (trimmed_len >= MAX_PATH_SIZE) {
+                        fprintf(stderr,
+                                "Warning: .gitignore entry too long, skipping: %.32s...\n",
+                                trimmed);
+                        continue;
+                    }
+                    memcpy(ctx->gitignore_entries[ctx->gitignore_entry_count], trimmed, trimmed_len + 1);
+                    ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] =
+                        ctx->gitignore_entries[ctx->gitignore_entry_count++];
                 }
             }
             fclose(file);
@@ -156,9 +178,6 @@ void print_help(const char* version) {
     printf("  -O, --output-dir <DIR>             Specify the output directory (disables stdout).\n");
     printf("  -p, --paste [KEY]                  Upload output to Gist (uses GITHUB_API_KEY from env).\n");
     printf("  -c, --clipboard                    Copy the output to the system clipboard.\n");
-    printf("      --benchmark[=FILE]             Enable lightweight benchmarking and write CSV to FILE (default stdout).\n");
-    printf("      --benchmark-sample N           Only sample 1 in N file content operations to reduce overhead.\n");
-
     printf("\nExamples:\n");
     printf("  recap src doc -I '\\.(c|h|md)$'\n");
     printf("    Process 'src' and 'doc', showing content for C, header, and markdown files.\n\n");
@@ -175,10 +194,6 @@ void print_help(const char* version) {
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx) {
     ctx->fnmatch_exclude_filters.patterns[ctx->fnmatch_exclude_filters.count++] = ".git/";
-    ctx->bench_enabled = 0;
-    ctx->bench_output_path[0] = '\0';
-    ctx->bench_sample_rate = 1;
-
     opterr = 0;
 
     static struct option long_options[] = {
@@ -197,8 +212,6 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         {"output-dir", required_argument, 0, 'O'},
         {"clipboard", no_argument, 0, 'c'},
         {"compact", no_argument, 0, 256},
-        {"benchmark", optional_argument, 0, 512},
-        {"benchmark-sample", required_argument, 0, 513},
         {0, 0, 0, 0}};
 
     int opt;
@@ -257,16 +270,6 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             break;
         case 256:
             ctx->compact_output = 1;
-            break;
-        case 512:
-            ctx->bench_enabled = 1;
-            if (optarg) {
-                strncpy(ctx->bench_output_path, optarg, sizeof(ctx->bench_output_path) - 1);
-            }
-            break;
-        case 513:
-            ctx->bench_sample_rate = atoi(optarg);
-            if (ctx->bench_sample_rate <= 0) ctx->bench_sample_rate = 1;
             break;
         case '?': {
             const char* problem = NULL;

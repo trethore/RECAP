@@ -3,7 +3,7 @@ BINDIR := $(PREFIX)/bin
 MANDIR := $(PREFIX)/share/man/man1
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=gnu11 -g -D_POSIX_C_SOURCE=200809L
+CFLAGS = -Wall -Wextra -std=gnu11 -O2 -g -D_POSIX_C_SOURCE=200809L
 LIBS = -lcurl -ljansson -lpcre2-8
 
 SRCDIR = src
@@ -19,6 +19,10 @@ all: $(EXEC)
 .PHONY: test
 test: all
 	@bash test/run-integration-tests.sh
+
+.PHONY: bench
+bench: all
+	@bash test/run-benchmarks.sh
 
 
 $(EXEC): $(OBJECTS)
@@ -43,4 +47,4 @@ uninstall:
 	rm -f $(MANDIR)/$(MANPAGE).1
 	@echo "$(EXEC): uninstalled"
 
-.PHONY: all clean install uninstall
+.PHONY: all clean install uninstall bench

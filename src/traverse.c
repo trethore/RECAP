@@ -8,17 +8,14 @@
 #include <unistd.h>
 
 static int match_regex_list(const regex_ctx* ctx, const char* str) {
-    pcre2_match_data* match_data = pcre2_match_data_create(1, NULL);
-    if (!match_data) return 0;
-
     for (int i = 0; i < ctx->count; i++) {
-        int rc = pcre2_match(ctx->compiled[i], (PCRE2_SPTR)str, PCRE2_ZERO_TERMINATED, 0, 0, match_data, NULL);
-        if (rc >= 0) {
-            pcre2_match_data_free(match_data);
+        if (!ctx->match_data[i]) {
+            continue;
+        }
+        if (pcre2_match(ctx->compiled[i], (PCRE2_SPTR)str, PCRE2_ZERO_TERMINATED, 0, 0, ctx->match_data[i], NULL) >= 0) {
             return 1;
         }
     }
-    pcre2_match_data_free(match_data);
     return 0;
 }
 
@@ -154,9 +151,9 @@ static void write_file_content_block(const char* full_path, const char* rel_path
 
 static void print_output(recap_context* ctx) {
     for (size_t i = 0; i < ctx->matched_files.count; i++) {
-        const char* full_path = ctx->matched_files.items[i];
-        char rel_path[MAX_PATH_SIZE];
-        get_relative_path(full_path, ctx->cwd, rel_path, sizeof(rel_path));
+        const path_entry* entry = &ctx->matched_files.items[i];
+        const char* full_path = entry->full_path;
+        const char* rel_path = entry->rel_path;
 
         if (i > 0) {
             fprintf(ctx->output_stream, "---\n");
@@ -172,39 +169,56 @@ static void print_output(recap_context* ctx) {
 }
 
 static void traverse_directory(const char* base_path, const char* rel_path_prefix, recap_context* ctx) {
-    struct dirent** namelist;
-    int n = scandir(base_path, &namelist, NULL, alphasort);
-    if (n < 0) {
+    DIR* dir = opendir(base_path);
+    if (!dir) {
         return;
     }
 
-    for (int i = 0; i < n; i++) {
-        struct dirent* entry = namelist[i];
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != NULL) {
         if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
-            free(namelist[i]);
             continue;
         }
 
-        char full_path[MAX_PATH_SIZE], rel_path[MAX_PATH_SIZE];
-        int len;
+        char full_path[MAX_PATH_SIZE];
+        char rel_path[MAX_PATH_SIZE];
 
-        len = snprintf(full_path, sizeof(full_path), "%s/%s", base_path, entry->d_name);
+        int len = snprintf(full_path, sizeof(full_path), "%s/%s", base_path, entry->d_name);
         if (len < 0 || (size_t)len >= sizeof(full_path)) {
-            free(namelist[i]);
             continue;
         }
+
         len = snprintf(rel_path, sizeof(rel_path), "%s%s", rel_path_prefix, entry->d_name);
         if (len < 0 || (size_t)len >= sizeof(rel_path)) {
-            free(namelist[i]);
             continue;
         }
+
         struct stat st;
-        if (lstat(full_path, &st) != 0) {
-            free(namelist[i]);
-            continue;
+        int have_type = 0;
+#if defined(_DIRENT_HAVE_D_TYPE) && defined(DT_UNKNOWN) && defined(DT_DIR) && defined(DT_REG) && defined(S_IFDIR) && defined(S_IFREG)
+        if (entry->d_type != DT_UNKNOWN) {
+            memset(&st, 0, sizeof(st));
+            have_type = 1;
+            switch (entry->d_type) {
+            case DT_DIR:
+                st.st_mode = S_IFDIR;
+                break;
+            case DT_REG:
+                st.st_mode = S_IFREG;
+                break;
+            default:
+                have_type = 0;
+                break;
+            }
+        }
+#endif
+
+        if (!have_type) {
+            if (lstat(full_path, &st) != 0) {
+                continue;
+            }
         }
         if (should_be_skipped(rel_path, &st, ctx)) {
-            free(namelist[i]);
             continue;
         }
 
@@ -213,17 +227,16 @@ static void traverse_directory(const char* base_path, const char* rel_path_prefi
             int dir_len = snprintf(dir_rel_path, sizeof(dir_rel_path), "%s/", rel_path);
             if (dir_len < 0 || (size_t)dir_len >= sizeof(dir_rel_path)) {
                 fprintf(stderr, "Warning: path too long, skipping directory: %s\n", rel_path);
-                free(namelist[i]);
                 continue;
             }
             traverse_directory(full_path, dir_rel_path, ctx);
         }
         else if (S_ISREG(st.st_mode)) {
-            path_list_add(&ctx->matched_files, full_path);
+            path_list_add(&ctx->matched_files, full_path, rel_path);
         }
-        free(namelist[i]);
     }
-    free(namelist);
+
+    closedir(dir);
 }
 
 int start_traversal(recap_context* ctx) {
@@ -258,10 +271,11 @@ int start_traversal(recap_context* ctx) {
             traverse_directory(path, strcmp(rel_path, ".") == 0 ? "" : dir_rel_path, ctx);
         }
         else if (S_ISREG(st.st_mode)) {
-            path_list_add(&ctx->matched_files, path);
+            path_list_add(&ctx->matched_files, path, rel_path);
         }
     }
 
+    path_list_sort(&ctx->matched_files);
     print_output(ctx);
     return 0;
 }

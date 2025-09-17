@@ -21,35 +21,55 @@ int is_text_file(const char* full_path) {
 }
 
 int path_list_init(path_list* list) {
-    list->items = malloc(16 * sizeof(char*));
+    list->items = malloc(16 * sizeof(path_entry));
     if (!list->items) return -1;
     list->count = 0;
     list->capacity = 16;
     return 0;
 }
 
-int path_list_add(path_list* list, const char* path) {
+int path_list_add(path_list* list, const char* full_path, const char* rel_path) {
     if (list->count >= list->capacity) {
         size_t new_capacity = list->capacity * 2;
-        char** new_items = realloc(list->items, new_capacity * sizeof(char*));
+        path_entry* new_items = realloc(list->items, new_capacity * sizeof(path_entry));
         if (!new_items) return -1;
         list->items = new_items;
         list->capacity = new_capacity;
     }
-    list->items[list->count] = strdup(path);
-    if (!list->items[list->count]) return -1;
+    path_entry* entry = &list->items[list->count];
+    entry->full_path = strdup(full_path);
+    entry->rel_path = strdup(rel_path);
+    if (!entry->full_path || !entry->rel_path) {
+        free(entry->full_path);
+        free(entry->rel_path);
+        return -1;
+    }
     list->count++;
     return 0;
 }
 
 void path_list_free(path_list* list) {
     if (list) {
-        for (size_t i = 0; i < list->count; i++) free(list->items[i]);
+        for (size_t i = 0; i < list->count; i++) {
+            free(list->items[i].full_path);
+            free(list->items[i].rel_path);
+        }
         free(list->items);
         list->items = NULL;
         list->count = 0;
         list->capacity = 0;
     }
+}
+
+static int compare_paths(const void* a, const void* b) {
+    const path_entry* pa = (const path_entry*)a;
+    const path_entry* pb = (const path_entry*)b;
+    return strcmp(pa->rel_path, pb->rel_path);
+}
+
+void path_list_sort(path_list* list) {
+    if (!list || list->count < 2) return;
+    qsort(list->items, list->count, sizeof(path_entry), compare_paths);
 }
 
 void normalize_path(char* path) {

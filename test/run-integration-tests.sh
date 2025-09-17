@@ -210,28 +210,6 @@ fi
 
 # Summary
 
-TEST_NAME="benchmark-stdout"
-run_cmd "$TMPROOT" --benchmark test
-assert_rc 0
-assert_out_contains "name,count,total_ms,avg_ms,min_ms,max_ms"
-assert_out_contains "total_run,"
-
-TEST_NAME="benchmark-file"
-run_cmd "$TMPROOT" --benchmark=bench.csv test
-assert_rc 0
-if [ -f "$TMPROOT/bench.csv" ]; then
-  echo "OK  (benchmark-file): bench.csv created"
-  if grep -q -- "name,count,total_ms,avg_ms,min_ms,max_ms" "$TMPROOT/bench.csv"; then
-    echo "OK  (benchmark-file): CSV header present"
-  else
-    echo "FAIL (benchmark-file): header missing"
-    FAIL=$((FAIL+1))
-  fi
-else
-  echo "FAIL (benchmark-file): bench.csv not created"
-  FAIL=$((FAIL+1))
-fi
-
 echo "-------------------------------------------------"
 echo "Ran $TOTAL assertions. Failures: $FAIL"
 if [ "$FAIL" -eq 0 ]; then
