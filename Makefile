@@ -44,7 +44,7 @@ install: $(EXEC) $(MANPAGE)
 
 uninstall:
 	rm -f $(BINDIR)/$(EXEC)
-	rm -f $(MANDIR)/$(MANPAGE).1
+	rm -f $(MANDIR)/$(EXEC).1
 	@echo "$(EXEC): uninstalled"
 
 .PHONY: all clean install uninstall bench

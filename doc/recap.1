@@ -1,4 +1,4 @@
-.TH RECAP 1 "April 2025" "recap 2.0.0" "User Commands"
+.TH RECAP 1 "September 2025" "recap 2.0.1" "User Commands"
 .SH NAME
 recap \- capture the structure and content of a workspace and consolidate it into a single text output
 .SH SYNOPSIS
@@ -70,7 +70,7 @@ GITHUB_API_KEY:GitHub API key; used by \fB\-\-paste\fR if a key is not provided 
 .SH EXAMPLES
 .RS 4
 .TP
-.B recap src doc -I '\e\e.(c|h|md)$'
+.B recap src doc -I '\\.(c|h|md)$'
 Process 'src' and 'doc' directories, including content for files ending in .c, .h, or .md.
 .TP
 .B recap -e '^(obj|test)/'
@@ -79,7 +79,7 @@ Process the current directory, excluding any paths that start with 'obj/' or 'te
 .B recap -g --paste
 Process the project using .gitignore rules for exclusion and upload the result to a Gist.
 .TP
-.B recap -I '\e\e.js$' -S '\e\e.js$' '^\\s*\\/\\*\\*.*?\\*\\/'
+.B recap -I '\\.js$' -S '\\.js$' '^\\s*\\/\\*\\*.*?\\*\\/'
 Strip a JSDoc-style comment header from all .js files before printing their content.
 .RE
 .SH AUTHOR

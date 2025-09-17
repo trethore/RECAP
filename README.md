@@ -100,10 +100,13 @@ recap --git --include-content '\.py$' --clipboard
 
 #### Advanced: Strip license headers from JS files and upload to Gist
 A powerful one-liner to package and share code.
+
 ```bash
 # 1. Target only .js files.
 # 2. For those files, find and strip a leading JSDoc block.
-# 3. Upload the final result to a private Gist.
+# 3. Upload the final result to a private Gist (requires a token).
+# Note: `--paste` without a KEY reads the `GITHUB_API_KEY` environment variable.
+# Also: uploading requires writing to a file (i.e., not using stdout). Use `-o` or `-O` when uploading.
 recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/\s*' --paste
 ```
 
@@ -116,6 +119,8 @@ recap --git --compact -I '\.(c|h|cpp|hpp|js|ts|go|json)$'
 
 ```bash
 # Remove all recap-output-*.txt files from the current directory
+# Note: this command is interactive and will prompt for confirmation.
+# To script it, you can pipe a 'y' response: `printf "y\n" | recap --clear`
 recap --clear
 ```
 
