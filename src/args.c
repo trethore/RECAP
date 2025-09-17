@@ -215,7 +215,7 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:s:S:g::p::o:O:,", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_help(ctx->version);
