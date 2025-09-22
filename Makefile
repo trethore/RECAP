@@ -3,20 +3,28 @@ BINDIR := $(PREFIX)/bin
 MANDIR := $(PREFIX)/share/man/man1
 
 CC = gcc
-CFLAGS = -Wall -Wextra -std=gnu11 -g -D_POSIX_C_SOURCE=200809L
-LIBS = -lcurl -ljansson
+CFLAGS = -Wall -Wextra -std=gnu11 -O2 -g -D_POSIX_C_SOURCE=200809L
+LIBS = -lcurl -ljansson -lpcre2-8
 
 SRCDIR = src
 OBJDIR = obj
 EXEC = recap
 MANPAGE = doc/recap.1
 
-SOURCES = $(wildcard $(SRCDIR)/*.c) 
+SOURCES = $(wildcard $(SRCDIR)/*.c)
 OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
 
 all: $(EXEC)
 
-# Link target
+.PHONY: test
+test: all
+	@bash test/run-integration-tests.sh
+
+.PHONY: bench
+bench: all
+	@bash test/run-benchmarks.sh
+
+
 $(EXEC): $(OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
@@ -36,7 +44,7 @@ install: $(EXEC) $(MANPAGE)
 
 uninstall:
 	rm -f $(BINDIR)/$(EXEC)
-	rm -f $(MANDIR)/$(MANPAGE).1
+	rm -f $(MANDIR)/$(EXEC).1
 	@echo "$(EXEC): uninstalled"
 
-.PHONY: all clean install uninstall
+.PHONY: all clean install uninstall bench

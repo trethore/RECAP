@@ -2,33 +2,43 @@
 #define RECAP_H
 
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <dirent.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <ctype.h>
-#include <fnmatch.h>
-#include <limits.h>
+#include <stddef.h>
 
-#define MAX_PATH_SIZE 1024
-#define MAX_PATTERNS 1024
-#define MAX_CONTENT_SPECIFIERS 1024
+#define MAX_PATH_SIZE 4096
+#define MAX_PATTERNS 256
+#define MAX_SCOPED_STRIP_RULES 32
 #define MAX_GITIGNORE_ENTRIES 1024
-
-
-typedef struct {
-    const char* include_patterns[MAX_PATTERNS];
-    int include_count;
-} include_patterns_ctx;
+#define MAX_FILE_CONTENT_SIZE (10 * 1024 * 1024) // 10MB
 
 typedef struct {
-    const char* exclude_patterns[MAX_PATTERNS];
-    int exclude_count;
-    char gitignore_entries[MAX_GITIGNORE_ENTRIES][MAX_PATH_SIZE];
-    int gitignore_entry_count;
-} exclude_patterns_ctx;
+    char* full_path;
+    char* rel_path;
+} path_entry;
+
+typedef struct {
+    path_entry* items;
+    size_t count;
+    size_t capacity;
+} path_list;
+
+typedef struct {
+    pcre2_code* compiled[MAX_PATTERNS];
+    pcre2_match_data* match_data[MAX_PATTERNS];
+    int count;
+} regex_ctx;
+
+typedef struct {
+    const char* patterns[MAX_PATTERNS];
+    int count;
+} fnmatch_ctx;
+
+typedef struct {
+    pcre2_code* path_regex;
+    pcre2_code* strip_regex;
+} scoped_strip_rule;
 
 typedef struct {
     char output_dir[MAX_PATH_SIZE];
@@ -36,47 +46,63 @@ typedef struct {
     char calculated_output_path[MAX_PATH_SIZE];
     char relative_output_path[MAX_PATH_SIZE];
     int use_stdout;
+    int is_temp_file;
 } output_ctx;
 
 typedef struct {
-    const char* content_specifiers[MAX_CONTENT_SPECIFIERS];
-    int content_specifier_count;
-    int content_flag;
-} content_ctx;
+    const char* start_paths[MAX_PATTERNS];
+    int start_path_count;
+    char cwd[MAX_PATH_SIZE];
 
-typedef struct {
-    include_patterns_ctx includes;
-    exclude_patterns_ctx excludes;
+    regex_ctx include_filters;
+    regex_ctx exclude_filters;
+    regex_ctx content_include_filters;
+    regex_ctx content_exclude_filters;
+
+    fnmatch_ctx fnmatch_exclude_filters;
+    char gitignore_entries[MAX_GITIGNORE_ENTRIES][MAX_PATH_SIZE];
+    int gitignore_entry_count;
+
+    pcre2_code* strip_regex;
+    int strip_regex_is_set;
+
+    scoped_strip_rule scoped_strip_rules[MAX_SCOPED_STRIP_RULES];
+    int scoped_strip_rule_count;
+
     output_ctx output;
-    content_ctx content;
+    path_list matched_files;
+
     const char* gist_api_key;
     const char* version;
     FILE* output_stream;
+    int copy_to_clipboard;
+    int compact_output;
+
 } recap_context;
 
-
-
 void parse_arguments(int argc, char* argv[], recap_context* ctx);
-void load_gitignore(exclude_patterns_ctx* exclude_ctx, const char* gitignore_filename);
+void load_gitignore(recap_context* ctx, const char* gitignore_filename);
 void clear_recap_output_files(const char* target_dir);
-char* realpath(const char* restrict path, char* restrict resolved_path);
+void free_regex_ctx(regex_ctx* ctx);
 
-
-void traverse_directory(const char* base_path, int depth, recap_context* ctx);
-void print_indent(int depth, FILE* output);
-void write_file_content_inline(const char* filepath, int depth, recap_context* ctx);
-void get_relative_path(const char* full_path, char* rel_path, size_t size);
-int is_excluded(const char* rel_path, const recap_context* ctx);
-int print_path_hierarchy(const char* path, recap_context* ctx);
-int start_traversal(const char* initial_path, recap_context* ctx);
+int start_traversal(recap_context* ctx);
 
 int is_text_file(const char* full_path);
 void normalize_path(char* path);
-int should_show_content(const char* filename, const char* full_path, const content_ctx* content_context);
-
 int generate_output_filename(output_ctx* output_context);
-void free_content_specifiers(content_ctx* content_context);
+void get_relative_path(const char* full_path, const char* cwd, char* rel_path_out, size_t size);
+
+int path_list_init(path_list* list);
+int path_list_add(path_list* list, const char* full_path, const char* rel_path);
+void path_list_free(path_list* list);
+void path_list_sort(path_list* list);
+
+int read_file_into_buffer(const char* path, size_t max_bytes, char** out_buf, size_t* out_len);
 
 char* upload_to_gist(const char* filepath, const char* github_token);
+
+int copy_file_content_to_clipboard(const char* filepath);
+
+char* apply_compact_transformations(const char* content, const char* filename);
 
 #endif

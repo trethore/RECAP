@@ -1,78 +1,192 @@
 # RECAP - Extracts Context And Packages
 
-## Purpose
+A versatile command-line tool for capturing and packaging project context, designed for developers, teams, and AI assistants.
 
-`recap` is a command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code.
+---
 
-## TODO
+## What is RECAP?
 
-* [X] Change `--paste` to check if an API key is provided in environment
-* [X] Add `--output` output the generated text in a file
-* [X] Add `--out-dir` output the generated text in a directory
-* [X] Add a warning to `--clear` since it removes all ctf-output files
-* [X] Remove `--name` no longer useful
-* [X] Remove `--dir` no longer useful
-* [X] Add `--version`
-* [X] `--content` allow multiple options instead of custom quote separation logic (current logic is fine, but what if you want to target extensions containing quotes? it's a rabbit hole of escaping mechanisms. better let the shell handle it)
-* [X] add non-option argument for source directory(ies?): currently it's always `.`
-* [X] Allow custom .gitignore filename as `--git` option argument, or load it from parent directory recursively (until root) if not found. Also check if there's a library to interpret the full syntax (comment, !-lines...)
-* [ ] Remove Herobrine
-  
-## Building the Project
+Providing comprehensive project context to Large Language Models (LLMs), new team members, or for documentation can be a tedious process of copying and pasting files. `recap` automates this by intelligently traversing your project directory, filtering files, and consolidating their structure and content into a single, clean text output.
 
-### Dependencies
+It's a powerful utility for anyone who needs to quickly package a project's source code for review, analysis, or as context for generative AI.
 
-This project requires the following libraries:
+## Key Features
 
-* libcurl (for HTTP requests)
-* jansson (for JSON parsing)
+*   **Intelligent Filtering**: Use powerful regular expressions (REGEX) to include or exclude specific files and directories.
+*   **Git Integration**: Automatically respects your `.gitignore` files to exclude irrelevant content, ensuring a clean output (`--git`).
+*   **Precise Content Control**: Decide exactly which files should have their content displayed (`--include-content`) and which should only be listed by path.
+*   **Header Stripping**: Automatically remove boilerplate like license headers or comment blocks from file content using regex, on a global (`--strip`) or per-file-type basis (`--strip-scope`).
+*   **Content Compaction**: Optionally removes comments and redundant whitespace from file content to create a denser, token‑efficient output for LLMs (`--compact`). Language‑aware behavior:
+    *   C/C++/Java/JS/TS/Go: removes `//` and `/* ... */` comments; trims redundant spaces.
+    *   CSS: removes `/* ... */` comments; trims redundant spaces.
+    *   Python/Shell/Ruby/Perl: removes `#` comments; preserves strings.
+    *   JSON: minifies by removing insignificant whitespace outside strings.
+*   **Versatile Output Modes**:
+    *   Print to **stdout** to pipe into other commands.
+    *   Save to a named file (`--output`).
+    *   Save to a timestamped file (`--output-dir`).
+    *   Copy directly to the system **clipboard** (`--clipboard`).
+    *   Upload to a private GitHub **Gist** in one command (`--paste`).
+*   **Cross-Platform**: Works on Linux, macOS, and Windows.
 
-On Debian/Ubuntu systems, you can install these dependencies with:
+## Installation
 
+### 1. Prerequisites
+
+#### Build Dependencies
+You need `make` and a C compiler, plus the development headers for the following libraries:
+*   **pcre2** (for regular expressions)
+*   **libcurl** (for Gist uploads)
+*   **jansson** (for JSON parsing for Gist uploads)
+
+**On Debian / Ubuntu:**
 ```bash
-sudo apt-get install libcurl4-openssl-dev libjansson-dev
+sudo apt-get install build-essential libpcre2-dev libcurl4-openssl-dev libjansson-dev
 ```
 
-### Build Instructions
+**On macOS (using Homebrew):**
+```bash
+brew install pcre2 curl jansson
+```
 
-1. Clone the repository:
-  
-  ```bash
-  git clone https://github.com/trethore/RECAP.git
-  cd RECAP
-  ```
-  
-2. Build the project:
-  
-  ```bash
-  make
-  ```
-  
-  This will compile the source files and create the `recap` executable.
-  
-3. To clean the build files:
-  
-  ```bash
-  make clean
-  ```
+#### Runtime Dependencies (Optional)
+For the clipboard feature (`-c`, `--clipboard`), `recap` relies on standard system utilities.
 
-### Installation
+*   **Linux**: `xclip` (for X11) or `wl-clipboard` (for Wayland).
+    ```bash
+    # For X11-based systems
+    sudo apt-get install xclip
+    # For Wayland-based systems
+    sudo apt-get install wl-clipboard
+    ```
+*   **macOS / Windows**: The necessary utilities (`pbcopy` and `clip.exe`) are pre-installed.
 
-Build and install the compiled `recap` binary on your system:
+### 2. Building from Source
 
- ```bash
- make install
- ```
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/trethore/RECAP.git
+    cd RECAP
+    ```
 
-Uninstall with `make uninstall`.
+2.  **Compile the project:**
+    ```bash
+    make
+    ```
+    This will create the `recap` executable in the current directory. You can move this executable to a directory in your system's `PATH` (e.g., `/usr/local/bin`) for global access.
 
-### Build Configuration
+## Usage Examples
 
-The project is compiled with the following flags:
+#### Basic: List all files, showing content for source and markdown
+```bash
+# Process src and docs, showing content for c, h, and md files
+recap src docs --include-content '\.(c|h|md)$'
+```
 
-* `-Wall -Wextra`: Enable all warnings
-* `-std=c11`: Use C11 standard
-* `-g`: Include debugging information
+#### Filtering: Use `.gitignore` and exclude test directories
+```bash
+# Use gitignore rules but also explicitly exclude any 'test' directories
+recap --git --exclude '/test/'
+```
 
-If you need to modify the compiler or flags, you can edit the variables at the top of the Makefile.
+You can optionally point `--git` at a specific ignore file: `recap --git .myignore`.
 
+#### Clipboard: Get all Python files and copy to clipboard
+This is perfect for quickly providing context to an AI.
+```bash
+# Find all Python files, respect .gitignore, and copy the result
+recap --git --include-content '\.py$' --clipboard
+```
+
+#### Advanced: Strip license headers from JS files and upload to Gist
+A powerful one-liner to package and share code.
+
+```bash
+# 1. Target only .js files.
+# 2. For those files, find and strip a leading JSDoc block.
+# 3. Upload the final result to a private Gist (requires a token).
+# Note: `--paste` without a KEY reads the `GITHUB_API_KEY` environment variable.
+# Also: uploading requires writing to a file (i.e., not using stdout). Use `-o` or `-O` when uploading.
+recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/\s*' --paste
+```
+
+#### Compact: Minify JSON and strip code comments
+```bash
+# Minify JSON and compact common source files, respecting .gitignore
+recap --git --compact -I '\.(c|h|cpp|hpp|js|ts|go|json)$'
+```
+#### Maintenance: Clean up old outputs
+
+```bash
+# Remove all recap-output-*.txt files from the current directory
+# Note: this command is interactive and will prompt for confirmation.
+# To script it, you can pipe a 'y' response: `printf "y\n" | recap --clear`
+recap --clear
+```
+
+## Running Tests
+
+- **Command**: `make test` — Build and run the integration test suite.
+- **Alternative**: `bash test/run-integration-tests.sh` — Run the test runner directly.
+
+Notes:
+- **Build step**: The `test` target will build the `recap` binary if it's missing; ensure the development headers for `pcre2`, `libcurl`, and `jansson` are installed.
+- **Environment**: The test runner copies `test/` into a temporary workspace and executes the repository `recap` binary. Set the `RECAP_BIN` environment variable to override the binary path if needed.
+
+## Benchmarking
+
+- **Command**: `make bench` — Build (if needed) and run the benchmark harness.
+- **Alternative**: `bash test/run-benchmarks.sh` — Run the harness directly.
+
+The benchmark runner executes `recap test` repeatedly in a temporary workspace and
+reports Criterion-style statistics (min/avg/max, median, and standard deviation).
+Use `--runs N` to control how many iterations are performed and `--show-runs` to
+print the duration of each individual run.
+
+Examples:
+
+```bash
+# Default 100-run benchmark
+make bench
+
+# Twenty runs with per-run timings
+bash test/run-benchmarks.sh --runs 20 --show-runs
+```
+
+## Notes & Limits
+
+- Gist uploads: private Gists via `--paste` use `GITHUB_API_KEY` by default; you can also pass a token directly: `--paste <KEY>`.
+- File size caps: individual file content blocks are limited to 10 MB; files larger than this are not inlined in the output. Gist uploads also enforce a 10 MB limit.
+## Contributing
+
+Contributions are welcome and greatly appreciated! Whether it's reporting a bug, proposing a new feature, or submitting a code change, your help is valuable.
+
+### Reporting Bugs or Requesting Features
+
+The best way to report a bug or request a new feature is to [open an issue](https://github.com/trethore/RECAP/issues) on GitHub.
+
+*   **For Bug Reports**: Please include your operating system, the command you ran, the output you received, and what you expected to happen.
+*   **For Feature Requests**: Please provide a clear description of the feature you'd like to see and why it would be useful.
+
+### Submitting Changes (Pull Requests)
+
+If you'd like to contribute code, please follow these steps:
+
+1.  **Fork the repository** on GitHub.
+2.  **Create a new branch** for your feature or bug fix:
+    ```bash
+    git checkout -b feature/my-new-feature
+    ```
+3.  **Make your changes**. Please try to follow the existing coding style to maintain consistency.
+4.  **Test your changes** to ensure they work as expected and don't introduce new issues.
+5.  **Commit your changes** with a clear and descriptive commit message:
+    ```bash
+    git commit -m "feat: Add support for XYZ"
+    ```
+6.  **Push your branch** to your fork:
+    ```bash
+    git push origin feature/my-new-feature
+    ```
+7.  **Open a Pull Request** from your branch to the `main` branch of the original repository.
+
+Thank you for your interest in improving `recap`
