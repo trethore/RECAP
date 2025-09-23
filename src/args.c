@@ -30,10 +30,27 @@ static int add_regex(regex_ctx* ctx, const char* pattern) {
     if (add_regex_internal(&ctx->compiled[ctx->count], pattern, 0) != 0) {
         return -1;
     }
-    ctx->match_data[ctx->count] = pcre2_match_data_create_from_pattern(ctx->compiled[ctx->count], NULL);
-    if (!ctx->match_data[ctx->count]) {
+    pcre2_code* compiled = ctx->compiled[ctx->count];
+    pcre2_match_data* match_data = pcre2_match_data_create_from_pattern(compiled, NULL);
+    if (!match_data) {
         fprintf(stderr, "Error: Could not allocate match data for regex '%s'\n", pattern);
-        pcre2_code_free(ctx->compiled[ctx->count]);
+        pcre2_code_free(compiled);
+        ctx->compiled[ctx->count] = NULL;
+        return -1;
+    }
+
+    ctx->match_data[ctx->count] = match_data;
+
+    if (!memlst_add(&ctx->destructors, (dtor_fn)pcre2_match_data_free, match_data)) {
+        ctx->match_data[ctx->count] = NULL;
+        pcre2_code_free(compiled);
+        ctx->compiled[ctx->count] = NULL;
+        return -1;
+    }
+    if (!memlst_add(&ctx->destructors, (dtor_fn)pcre2_code_free, compiled)) {
+        memlst_remove_last(&ctx->destructors);
+        pcre2_match_data_free(match_data);
+        ctx->match_data[ctx->count] = NULL;
         ctx->compiled[ctx->count] = NULL;
         return -1;
     }
@@ -55,6 +72,22 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
 
     if (add_regex_internal(&rule->strip_regex, strip_pattern, PCRE2_MULTILINE) != 0) {
         pcre2_code_free(rule->path_regex);
+        rule->path_regex = NULL;
+        return -1;
+    }
+
+    if (!memlst_add(&ctx->cleanup, (dtor_fn)pcre2_code_free, rule->path_regex)) {
+        pcre2_code_free(rule->strip_regex);
+        rule->strip_regex = NULL;
+        rule->path_regex = NULL;
+        return -1;
+    }
+
+    if (!memlst_add(&ctx->cleanup, (dtor_fn)pcre2_code_free, rule->strip_regex)) {
+        memlst_remove_last(&ctx->cleanup);
+        rule->strip_regex = NULL;
+        pcre2_code_free(rule->path_regex);
+        rule->path_regex = NULL;
         return -1;
     }
 
@@ -63,15 +96,11 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
 }
 
 void free_regex_ctx(regex_ctx* ctx) {
+    if (!ctx) return;
+    memlst_destroy(&ctx->destructors);
     for (int i = 0; i < ctx->count; i++) {
-        if (ctx->compiled[i]) {
-            pcre2_code_free(ctx->compiled[i]);
-            ctx->compiled[i] = NULL;
-        }
-        if (ctx->match_data[i]) {
-            pcre2_match_data_free(ctx->match_data[i]);
-            ctx->match_data[i] = NULL;
-        }
+        ctx->compiled[i] = NULL;
+        ctx->match_data[i] = NULL;
     }
     ctx->count = 0;
 }
@@ -240,9 +269,11 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             add_regex(&ctx->content_exclude_filters, optarg);
             break;
         case 's':
-            if (add_regex_internal(&ctx->strip_regex, optarg, PCRE2_MULTILINE) == 0) {
-                ctx->strip_regex_is_set = 1;
+            if (ctx->strip_regex) {
+                pcre2_code_free(ctx->strip_regex);
+                ctx->strip_regex = NULL;
             }
+            add_regex_internal(&ctx->strip_regex, optarg, PCRE2_MULTILINE);
             break;
         case 'S':
             if (optind >= argc) {

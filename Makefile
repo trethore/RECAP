@@ -11,7 +11,8 @@ OBJDIR = obj
 EXEC = recap
 MANPAGE = doc/recap.1
 
-SOURCES = $(wildcard $(SRCDIR)/*.c)
+SOURCES = $(wildcard $(SRCDIR)/*.c) \
+          $(wildcard $(SRCDIR)/lib/*.c)
 OBJECTS = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SOURCES))
 
 all: $(EXEC)
@@ -29,6 +30,7 @@ $(EXEC): $(OBJECTS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LIBS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.c $(SRCDIR)/recap.h | $(OBJDIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(OBJDIR):

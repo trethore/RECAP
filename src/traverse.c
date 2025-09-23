@@ -99,7 +99,7 @@ static void write_file_content_block(const char* full_path, const char* rel_path
         }
     }
     if (path_md) pcre2_match_data_free(path_md);
-    if (!strip_regex_to_use && ctx->strip_regex_is_set) {
+    if (!strip_regex_to_use && ctx->strip_regex) {
         strip_regex_to_use = ctx->strip_regex;
     }
 

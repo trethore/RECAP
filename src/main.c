@@ -8,6 +8,14 @@
 
 const char* RECAP_VERSION = "2.0.1";
 
+static void pcre2_code_ptr_cleanup(void* data) {
+    pcre2_code** code = data;
+    if (code && *code) {
+        pcre2_code_free(*code);
+        *code = NULL;
+    }
+}
+
 static int setup_output_stream(recap_context* ctx) {
     int is_output_specified = (ctx->output.output_name[0] != '\0' || ctx->output.output_dir[0] != '\0');
 
@@ -98,6 +106,18 @@ int main(int argc, char* argv[]) {
     int result = 0;
     int curl_initialized = 0;
 
+    memlst_init(&ctx.cleanup);
+    if (!memlst_add(&ctx.cleanup, (dtor_fn)free_regex_ctx, &ctx.include_filters) ||
+        !memlst_add(&ctx.cleanup, (dtor_fn)free_regex_ctx, &ctx.exclude_filters) ||
+        !memlst_add(&ctx.cleanup, (dtor_fn)free_regex_ctx, &ctx.content_include_filters) ||
+        !memlst_add(&ctx.cleanup, (dtor_fn)free_regex_ctx, &ctx.content_exclude_filters) ||
+        !memlst_add(&ctx.cleanup, pcre2_code_ptr_cleanup, &ctx.strip_regex) ||
+        !memlst_add(&ctx.cleanup, (dtor_fn)path_list_free, &ctx.matched_files)) {
+        fprintf(stderr, "Error: Failed to register cleanup handlers.\n");
+        result = 1;
+        goto cleanup;
+    }
+
     ctx.version = RECAP_VERSION;
 
     if (!getcwd(ctx.cwd, sizeof(ctx.cwd))) {
@@ -134,18 +154,7 @@ cleanup:
     if (ctx.output_stream && ctx.output_stream != stdout) {
         fclose(ctx.output_stream);
     }
-    path_list_free(&ctx.matched_files);
-    free_regex_ctx(&ctx.include_filters);
-    free_regex_ctx(&ctx.exclude_filters);
-    free_regex_ctx(&ctx.content_include_filters);
-    free_regex_ctx(&ctx.content_exclude_filters);
-    if (ctx.strip_regex_is_set) {
-        pcre2_code_free(ctx.strip_regex);
-    }
-    for (int i = 0; i < ctx.scoped_strip_rule_count; i++) {
-        pcre2_code_free(ctx.scoped_strip_rules[i].path_regex);
-        pcre2_code_free(ctx.scoped_strip_rules[i].strip_regex);
-    }
+    memlst_destroy(&ctx.cleanup);
     if (curl_initialized) {
         curl_global_cleanup();
     }
