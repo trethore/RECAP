@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <stddef.h>
 
+#include "lib/memlst.h"
+
 #define MAX_PATH_SIZE 4096
 #define MAX_PATTERNS 256
 #define MAX_SCOPED_STRIP_RULES 32
@@ -28,6 +30,7 @@ typedef struct {
     pcre2_code* compiled[MAX_PATTERNS];
     pcre2_match_data* match_data[MAX_PATTERNS];
     int count;
+    memlst_t destructors;
 } regex_ctx;
 
 typedef struct {
@@ -64,13 +67,14 @@ typedef struct {
     int gitignore_entry_count;
 
     pcre2_code* strip_regex;
-    int strip_regex_is_set;
 
     scoped_strip_rule scoped_strip_rules[MAX_SCOPED_STRIP_RULES];
     int scoped_strip_rule_count;
 
     output_ctx output;
     path_list matched_files;
+
+    memlst_t cleanup;
 
     const char* gist_api_key;
     const char* version;
