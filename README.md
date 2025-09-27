@@ -52,10 +52,12 @@ brew install pcre2 curl jansson
 #### Runtime Dependencies (Optional)
 For the clipboard feature (`-c`, `--clipboard`), `recap` relies on standard system utilities.
 
-*   **Linux**: `xclip` (for X11) or `wl-clipboard` (for Wayland).
+*   **Linux**: `xclip` (for X11), `xsel` (alternative X11 tool), or `wl-clipboard` (for Wayland).
     ```bash
     # For X11-based systems
     sudo apt-get install xclip
+    # Alternative X11 clipboard helper
+    sudo apt-get install xsel
     # For Wayland-based systems
     sudo apt-get install wl-clipboard
     ```
