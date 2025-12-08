@@ -16,6 +16,14 @@ static void pcre2_code_ptr_cleanup(void* data) {
     }
 }
 
+static void pcre2_match_data_ptr_cleanup(void* data) {
+    pcre2_match_data** md = data;
+    if (md && *md) {
+        pcre2_match_data_free(*md);
+        *md = NULL;
+    }
+}
+
 static int setup_output_stream(recap_context* ctx) {
     int is_output_specified = (ctx->output.output_name[0] != '\0' || ctx->output.output_dir[0] != '\0');
 
@@ -112,6 +120,7 @@ int main(int argc, char* argv[]) {
         !memlst_add(&ctx.cleanup, (dtor_fn)free_regex_ctx, &ctx.content_include_filters) ||
         !memlst_add(&ctx.cleanup, (dtor_fn)free_regex_ctx, &ctx.content_exclude_filters) ||
         !memlst_add(&ctx.cleanup, pcre2_code_ptr_cleanup, &ctx.strip_regex) ||
+        !memlst_add(&ctx.cleanup, pcre2_match_data_ptr_cleanup, &ctx.strip_match_data) ||
         !memlst_add(&ctx.cleanup, (dtor_fn)path_list_free, &ctx.matched_files)) {
         fprintf(stderr, "Error: Failed to register cleanup handlers.\n");
         result = 1;

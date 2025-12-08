@@ -6,6 +6,8 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
+#include <fcntl.h>
 
 int is_text_file(const char* full_path) {
     FILE* file = fopen(full_path, "rb");
@@ -210,79 +212,91 @@ int program_exists(const char* name) {
     return 0;
 }
 
-int copy_file_content_to_clipboard(const char* filepath) {
-    char command[MAX_PATH_SIZE + 64];
-    int result = -1;
+static int run_clipboard_tool(const char* tool_path, char* const args[], const char* input_file) {
+    pid_t pid = fork();
+    if (pid < 0) {
+        perror("fork");
+        return -1;
+    }
+    else if (pid == 0) {
+        // Child process
+        int fd = open(input_file, O_RDONLY);
+        if (fd < 0) {
+            perror("open input file");
+            exit(1);
+        }
+        if (dup2(fd, STDIN_FILENO) < 0) {
+            perror("dup2");
+            close(fd);
+            exit(1);
+        }
+        close(fd);
 
-#if defined(__APPLE__)
-    snprintf(command, sizeof(command), "cat \"%s\" | pbcopy", filepath);
-    result = system(command);
-#elif defined(_WIN32)
-    snprintf(command, sizeof(command), "clip < \"%s\"", filepath);
-    result = system(command);
-#elif defined(__linux__)
-    if (!getenv("WAYLAND_DISPLAY")) {
-        if (program_exists("xclip")) {
-            snprintf(command, sizeof(command), "cat \"%s\" | xclip -selection clipboard", filepath);
-            result = system(command);
-            if (result != 0) {
-                fprintf(stderr, "Warning: 'xclip' command failed.\n");
-            }
-        }
-        else if (program_exists("xsel")) {
-            snprintf(command, sizeof(command), "cat \"%s\" | xsel -b -i", filepath);
-            result = system(command);
-            if (result != 0) {
-                fprintf(stderr, "Warning: 'xsel' command failed.\n");
-            }
-        }
-        else if (program_exists("wl-copy")) {
-            snprintf(command, sizeof(command), "cat \"%s\" | wl-copy", filepath);
-            result = system(command);
-            if (result != 0) {
-                fprintf(stderr, "Warning: 'wl-copy' command failed.\n");
-            }
-        }
-        else {
-            fprintf(stderr, "Error: No clipboard utility found. Install 'xclip', 'xsel', or 'wl-clipboard'.\n");
-            return -1;
-        }
+        execvp(tool_path, args);
+        // If execvp returns, it failed
+        perror("execvp");
+        exit(1);
     }
     else {
-        if (program_exists("wl-copy")) {
-            snprintf(command, sizeof(command), "cat \"%s\" | wl-copy", filepath);
-            result = system(command);
-            if (result != 0) {
-                fprintf(stderr, "Warning: 'wl-copy' command failed.\n");
-            }
+        // Parent process
+        int status;
+        waitpid(pid, &status, 0);
+        if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            return 0;
         }
-        else if (program_exists("xclip")) {
-            snprintf(command, sizeof(command), "cat \"%s\" | xclip -selection clipboard", filepath);
-            result = system(command);
-            if (result != 0) {
-                fprintf(stderr, "Warning: 'xclip' command failed.\n");
+        return -1;
+    }
+}
+
+int copy_file_content_to_clipboard(const char* filepath) {
+#if defined(__APPLE__)
+    char* const args[] = {"pbcopy", NULL};
+    if (run_clipboard_tool("pbcopy", args, filepath) == 0) return 0;
+    fprintf(stderr, "Error: 'pbcopy' failed.\n");
+    return -1;
+#elif defined(_WIN32)
+    char command[MAX_PATH_SIZE + 64];
+    snprintf(command, sizeof(command), "clip < \"%s\"", filepath);
+    return system(command) == 0 ? 0 : -1;
+#elif defined(__linux__)
+    struct {
+        char* name;
+        char* args[4];
+    } tools[] = {
+        {"wl-copy", {"wl-copy", NULL}},
+        {"xclip", {"xclip", "-selection", "clipboard", NULL}},
+        {"xsel", {"xsel", "-b", "-i", NULL}}};
+
+    int prioritize_wayland = (getenv("WAYLAND_DISPLAY") != NULL);
+    int order[3];
+
+    if (prioritize_wayland) {
+        order[0] = 0; // wl-copy
+        order[1] = 1; // xclip
+        order[2] = 2; // xsel
+    }
+    else {
+        order[0] = 1; // xclip
+        order[1] = 2; // xsel
+        order[2] = 0; // wl-copy
+    }
+
+    for (int i = 0; i < 3; i++) {
+        int idx = order[i];
+        // Check existence first to avoid noisy perror/logs from run_clipboard_tool if not present
+        if (program_exists(tools[idx].name)) {
+            if (run_clipboard_tool(tools[idx].name, tools[idx].args, filepath) == 0) {
+                return 0;
             }
-        }
-        else if (program_exists("xsel")) {
-            snprintf(command, sizeof(command), "cat \"%s\" | xsel -b -i", filepath);
-            result = system(command);
-            if (result != 0) {
-                fprintf(stderr, "Warning: 'xsel' command failed.\n");
-            }
-        }
-        else {
-            fprintf(stderr, "Error: No clipboard utility found. Install 'wl-clipboard', 'xclip', or 'xsel'.\n");
-            return -1;
         }
     }
+
+    fprintf(stderr, "Error: No suitable clipboard utility found (checked wl-copy, xclip, xsel) or all failed.\n");
+    return -1;
 #else
     fprintf(stderr, "Error: Clipboard functionality is not supported on this operating system.\n");
     return -1;
 #endif
-
-    if (result != 0) return -1;
-
-    return 0;
 }
 
 int read_file_into_buffer(const char* path, size_t max_bytes, char** out_buf, size_t* out_len) {

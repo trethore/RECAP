@@ -90,26 +90,31 @@ static void write_file_content_block(const char* full_path, const char* rel_path
 
     const char* content_after_strip = content_buffer;
     pcre2_code* strip_regex_to_use = NULL;
+    pcre2_match_data* strip_match_data_to_use = NULL;
 
-    pcre2_match_data* path_md = pcre2_match_data_create(1, NULL);
-    for (int i = 0; path_md && i < ctx->scoped_strip_rule_count; i++) {
-        if (pcre2_match(ctx->scoped_strip_rules[i].path_regex, (PCRE2_SPTR)rel_path, PCRE2_ZERO_TERMINATED, 0, 0, path_md, NULL) >= 0) {
+    for (int i = 0; i < ctx->scoped_strip_rule_count; i++) {
+        if (pcre2_match(ctx->scoped_strip_rules[i].path_regex,
+                        (PCRE2_SPTR)rel_path,
+                        PCRE2_ZERO_TERMINATED,
+                        0, 0,
+                        ctx->scoped_strip_rules[i].path_match_data,
+                        NULL) >= 0) {
             strip_regex_to_use = ctx->scoped_strip_rules[i].strip_regex;
+            strip_match_data_to_use = ctx->scoped_strip_rules[i].strip_match_data;
             break;
         }
     }
-    if (path_md) pcre2_match_data_free(path_md);
+
     if (!strip_regex_to_use && ctx->strip_regex) {
         strip_regex_to_use = ctx->strip_regex;
+        strip_match_data_to_use = ctx->strip_match_data;
     }
 
-    if (strip_regex_to_use) {
-        pcre2_match_data* match_data = pcre2_match_data_create_from_pattern(strip_regex_to_use, NULL);
-        if (pcre2_match(strip_regex_to_use, (PCRE2_SPTR)content_buffer, file_size, 0, 0, match_data, NULL) >= 0) {
-            PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(match_data);
+    if (strip_regex_to_use && strip_match_data_to_use) {
+        if (pcre2_match(strip_regex_to_use, (PCRE2_SPTR)content_buffer, file_size, 0, 0, strip_match_data_to_use, NULL) >= 0) {
+            PCRE2_SIZE* ovector = pcre2_get_ovector_pointer(strip_match_data_to_use);
             content_after_strip = content_buffer + ovector[1];
         }
-        pcre2_match_data_free(match_data);
     }
 
     char* compacted_content = NULL;
