@@ -41,6 +41,8 @@ typedef struct {
 typedef struct {
     pcre2_code* path_regex;
     pcre2_code* strip_regex;
+    pcre2_match_data* path_match_data;
+    pcre2_match_data* strip_match_data;
 } scoped_strip_rule;
 
 typedef struct {
@@ -67,6 +69,7 @@ typedef struct {
     int gitignore_entry_count;
 
     pcre2_code* strip_regex;
+    pcre2_match_data* strip_match_data;
 
     scoped_strip_rule scoped_strip_rules[MAX_SCOPED_STRIP_RULES];
     int scoped_strip_rule_count;

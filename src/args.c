@@ -19,6 +19,8 @@ static int add_regex_internal(pcre2_code** re, const char* pattern, uint32_t opt
         fprintf(stderr, "Error: Could not compile regex '%s': %s at offset %d\n", pattern, (char*)err_buf, (int)error_offset);
         return -1;
     }
+    // Enable JIT compilation
+    pcre2_jit_compile(*re, PCRE2_JIT_COMPLETE);
     return 0;
 }
 
@@ -70,29 +72,55 @@ static int add_scoped_strip_rule(recap_context* ctx, const char* path_pattern, c
         return -1;
     }
 
+    rule->path_match_data = pcre2_match_data_create_from_pattern(rule->path_regex, NULL);
+    if (!rule->path_match_data) {
+        pcre2_code_free(rule->path_regex);
+        return -1;
+    }
+
     if (add_regex_internal(&rule->strip_regex, strip_pattern, PCRE2_MULTILINE) != 0) {
+        pcre2_match_data_free(rule->path_match_data);
         pcre2_code_free(rule->path_regex);
         rule->path_regex = NULL;
+        return -1;
+    }
+
+    rule->strip_match_data = pcre2_match_data_create_from_pattern(rule->strip_regex, NULL);
+    if (!rule->strip_match_data) {
+        pcre2_code_free(rule->strip_regex);
+        pcre2_match_data_free(rule->path_match_data);
+        pcre2_code_free(rule->path_regex);
         return -1;
     }
 
     if (!memlst_add(&ctx->cleanup, (dtor_fn)pcre2_code_free, rule->path_regex)) {
-        pcre2_code_free(rule->strip_regex);
-        rule->strip_regex = NULL;
-        rule->path_regex = NULL;
-        return -1;
+        goto error_cleanup;
     }
-
+    if (!memlst_add(&ctx->cleanup, (dtor_fn)pcre2_match_data_free, rule->path_match_data)) {
+        memlst_remove_last(&ctx->cleanup);
+        goto error_cleanup;
+    }
     if (!memlst_add(&ctx->cleanup, (dtor_fn)pcre2_code_free, rule->strip_regex)) {
         memlst_remove_last(&ctx->cleanup);
-        rule->strip_regex = NULL;
-        pcre2_code_free(rule->path_regex);
-        rule->path_regex = NULL;
-        return -1;
+        memlst_remove_last(&ctx->cleanup);
+        goto error_cleanup;
+    }
+    if (!memlst_add(&ctx->cleanup, (dtor_fn)pcre2_match_data_free, rule->strip_match_data)) {
+        memlst_remove_last(&ctx->cleanup);
+        memlst_remove_last(&ctx->cleanup);
+        memlst_remove_last(&ctx->cleanup);
+        goto error_cleanup;
     }
 
     ctx->scoped_strip_rule_count++;
     return 0;
+
+error_cleanup:
+    pcre2_match_data_free(rule->strip_match_data);
+    pcre2_code_free(rule->strip_regex);
+    pcre2_match_data_free(rule->path_match_data);
+    pcre2_code_free(rule->path_regex);
+    return -1;
 }
 
 void free_regex_ctx(regex_ctx* ctx) {
@@ -273,7 +301,18 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
                 pcre2_code_free(ctx->strip_regex);
                 ctx->strip_regex = NULL;
             }
-            add_regex_internal(&ctx->strip_regex, optarg, PCRE2_MULTILINE);
+            if (ctx->strip_match_data) {
+                pcre2_match_data_free(ctx->strip_match_data);
+                ctx->strip_match_data = NULL;
+            }
+            if (add_regex_internal(&ctx->strip_regex, optarg, PCRE2_MULTILINE) == 0) {
+                ctx->strip_match_data = pcre2_match_data_create_from_pattern(ctx->strip_regex, NULL);
+                if (!ctx->strip_match_data) {
+                    fprintf(stderr, "Error: Could not allocate match data for strip regex\n");
+                    pcre2_code_free(ctx->strip_regex);
+                    ctx->strip_regex = NULL;
+                }
+            }
             break;
         case 'S':
             if (optind >= argc) {
