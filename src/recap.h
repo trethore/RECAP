@@ -105,6 +105,8 @@ int read_file_into_buffer(const char* path, size_t max_bytes, char** out_buf, si
 
 char* upload_to_gist(const char* filepath, const char* github_token);
 
+int program_exists(const char* name);
+
 int copy_file_content_to_clipboard(const char* filepath);
 
 char* apply_compact_transformations(const char* content, const char* filename);

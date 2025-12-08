@@ -189,6 +189,27 @@ int generate_output_filename(output_ctx* ctx) {
     return 0;
 }
 
+int program_exists(const char* name) {
+    if (!name || name[0] == '\0') return 0;
+    const char* path_env = getenv("PATH");
+    if (!path_env) return 0;
+    char* paths = strdup(path_env);
+    if (!paths) return 0;
+    char* saveptr = NULL;
+    char* dir = strtok_r(paths, ":", &saveptr);
+    while (dir) {
+        char candidate[MAX_PATH_SIZE];
+        snprintf(candidate, sizeof(candidate), "%s/%s", dir, name);
+        if (access(candidate, X_OK) == 0) {
+            free(paths);
+            return 1;
+        }
+        dir = strtok_r(NULL, ":", &saveptr);
+    }
+    free(paths);
+    return 0;
+}
+
 int copy_file_content_to_clipboard(const char* filepath) {
     char command[MAX_PATH_SIZE + 64];
     int result = -1;
@@ -200,18 +221,58 @@ int copy_file_content_to_clipboard(const char* filepath) {
     snprintf(command, sizeof(command), "clip < \"%s\"", filepath);
     result = system(command);
 #elif defined(__linux__)
-    if (getenv("WAYLAND_DISPLAY")) {
-        snprintf(command, sizeof(command), "cat \"%s\" | wl-copy", filepath);
-        result = system(command);
-        if (result != 0) {
-            fprintf(stderr, "Warning: 'wl-copy' command failed. Is 'wl-clipboard' installed?\n");
+    if (!getenv("WAYLAND_DISPLAY")) {
+        if (program_exists("xclip")) {
+            snprintf(command, sizeof(command), "cat \"%s\" | xclip -selection clipboard", filepath);
+            result = system(command);
+            if (result != 0) {
+                fprintf(stderr, "Warning: 'xclip' command failed.\n");
+            }
+        }
+        else if (program_exists("xsel")) {
+            snprintf(command, sizeof(command), "cat \"%s\" | xsel -b -i", filepath);
+            result = system(command);
+            if (result != 0) {
+                fprintf(stderr, "Warning: 'xsel' command failed.\n");
+            }
+        }
+        else if (program_exists("wl-copy")) {
+            snprintf(command, sizeof(command), "cat \"%s\" | wl-copy", filepath);
+            result = system(command);
+            if (result != 0) {
+                fprintf(stderr, "Warning: 'wl-copy' command failed.\n");
+            }
+        }
+        else {
+            fprintf(stderr, "Error: No clipboard utility found. Install 'xclip', 'xsel', or 'wl-clipboard'.\n");
+            return -1;
         }
     }
     else {
-        snprintf(command, sizeof(command), "cat \"%s\" | xclip -selection clipboard", filepath);
-        result = system(command);
-        if (result != 0) {
-            fprintf(stderr, "Warning: 'xclip' command failed. Is 'xclip' installed?\n");
+        if (program_exists("wl-copy")) {
+            snprintf(command, sizeof(command), "cat \"%s\" | wl-copy", filepath);
+            result = system(command);
+            if (result != 0) {
+                fprintf(stderr, "Warning: 'wl-copy' command failed.\n");
+            }
+        }
+        else if (program_exists("xclip")) {
+            snprintf(command, sizeof(command), "cat \"%s\" | xclip -selection clipboard", filepath);
+            result = system(command);
+            if (result != 0) {
+                fprintf(stderr, "Warning: 'xclip' command failed.\n");
+            }
+        }
+        else if (program_exists("xsel")) {
+            snprintf(command, sizeof(command), "cat \"%s\" | xsel -b -i", filepath);
+            result = system(command);
+            if (result != 0) {
+                fprintf(stderr, "Warning: 'xsel' command failed.\n");
+            }
+        }
+        else {
+            fprintf(stderr, "Error: No clipboard utility found. Install 'wl-clipboard', 'xclip', or 'xsel'.\n");
+            return -1;
         }
     }
 #else
