@@ -12,60 +12,66 @@ It's a powerful utility for anyone who needs to quickly package a project's sour
 
 ## Key Features
 
-*   **Intelligent Filtering**: Use powerful regular expressions (REGEX) to include or exclude specific files and directories.
-*   **Git Integration**: Automatically respects your `.gitignore` files to exclude irrelevant content, ensuring a clean output (`--git`).
-*   **Precise Content Control**: Decide exactly which files should have their content displayed (`--include-content`) and which should only be listed by path.
-*   **Header Stripping**: Automatically remove boilerplate like license headers or comment blocks from file content using regex, on a global (`--strip`) or per-file-type basis (`--strip-scope`).
-*   **Content Compaction**: Optionally removes comments and redundant whitespace from file content to create a denser, token‑efficient output for LLMs (`--compact`). Language‑aware behavior:
-    *   C/C++/Java/JS/TS/Go: removes `//` and `/* ... */` comments; trims redundant spaces.
-    *   CSS: removes `/* ... */` comments; trims redundant spaces.
-    *   Python/Shell/Ruby/Perl: removes `#` comments; preserves strings.
-    *   JSON: minifies by removing insignificant whitespace outside strings.
-*   **Versatile Output Modes**:
-    *   Print to **stdout** to pipe into other commands.
-    *   Save to a named file (`--output`).
-    *   Save to a timestamped file (`--output-dir`).
-    *   Copy directly to the system **clipboard** (`--clipboard`).
-    *   Upload to a private GitHub **Gist** in one command (`--paste`).
-*   **Cross-Platform**: Works on Linux, macOS, and Windows.
+- **Intelligent Filtering**: Use powerful regular expressions (REGEX) to include or exclude specific files and directories.
+- **Git Integration**: Automatically respects your `.gitignore` files to exclude irrelevant content, ensuring a clean output (`--git`).
+- **Precise Content Control**: Decide exactly which files should have their content displayed (`--include-content`) and which should only be listed by path.
+- **Header Stripping**: Automatically remove boilerplate like license headers or comment blocks from file content using regex, on a global (`--strip`) or per-file-type basis (`--strip-scope`).
+- **Content Compaction**: Optionally removes comments and redundant whitespace from file content to create a denser, token‑efficient output for LLMs (`--compact`). Language‑aware behavior:
+  - C/C++/Java/JS/TS/Go: removes `//` and `/* ... */` comments; trims redundant spaces.
+  - CSS: removes `/* ... */` comments; trims redundant spaces.
+  - Python/Shell/Ruby/Perl: removes `#` comments; preserves strings.
+  - JSON: minifies by removing insignificant whitespace outside strings.
+- **Versatile Output Modes**:
+  - Print to **stdout** to pipe into other commands.
+  - Save to a named file (`--output`).
+  - Save to a timestamped file (`--output-dir`).
+  - Copy directly to the system **clipboard** (`--clipboard`).
+  - Upload to a private GitHub **Gist** in one command (`--paste`).
+- **Cross-Platform**: Works on Linux, macOS, and Windows.
 
 ## Installation
 
 ### 1. Prerequisites
 
 #### Build Dependencies
+
 You need `make` and a C compiler, plus the development headers for the following libraries:
-*   **pcre2** (for regular expressions)
-*   **libcurl** (for Gist uploads)
-*   **jansson** (for JSON parsing for Gist uploads)
+
+- **pcre2** (for regular expressions)
+- **libcurl** (for Gist uploads)
+- **jansson** (for JSON parsing for Gist uploads)
 
 **On Debian / Ubuntu:**
+
 ```bash
 sudo apt-get install build-essential libpcre2-dev libcurl4-openssl-dev libjansson-dev
 ```
 
 **On macOS (using Homebrew):**
+
 ```bash
 brew install pcre2 curl jansson
 ```
 
 #### Runtime Dependencies (Optional)
+
 For the clipboard feature (`-c`, `--clipboard`), `recap` relies on standard system utilities.
 
-*   **Linux**: `xclip` (for X11), `xsel` (alternative X11 tool), or `wl-clipboard` (for Wayland).
-    ```bash
-    # For X11-based systems
-    sudo apt-get install xclip
-    # Alternative X11 clipboard helper
-    sudo apt-get install xsel
-    # For Wayland-based systems
-    sudo apt-get install wl-clipboard
-    ```
-*   **macOS / Windows**: The necessary utilities (`pbcopy` and `clip.exe`) are pre-installed.
+- **Linux**: `xclip` (for X11), `xsel` (alternative X11 tool), or `wl-clipboard` (for Wayland).
+  ```bash
+  # For X11-based systems
+  sudo apt-get install xclip
+  # Alternative X11 clipboard helper
+  sudo apt-get install xsel
+  # For Wayland-based systems
+  sudo apt-get install wl-clipboard
+  ```
+- **macOS / Windows**: The necessary utilities (`pbcopy` and `clip.exe`) are pre-installed.
 
 ### 2. Building from Source
 
 1.  **Clone the repository:**
+
     ```bash
     git clone https://github.com/trethore/RECAP.git
     cd RECAP
@@ -80,12 +86,14 @@ For the clipboard feature (`-c`, `--clipboard`), `recap` relies on standard syst
 ## Usage Examples
 
 #### Basic: List all files, showing content for source and markdown
+
 ```bash
 # Process src and docs, showing content for c, h, and md files
 recap src docs --include-content '\.(c|h|md)$'
 ```
 
 #### Filtering: Use `.gitignore` and exclude test directories
+
 ```bash
 # Use gitignore rules but also explicitly exclude any 'test' directories
 recap --git --exclude '/test/'
@@ -94,13 +102,16 @@ recap --git --exclude '/test/'
 You can optionally point `--git` at a specific ignore file: `recap --git .myignore`.
 
 #### Clipboard: Get all Python files and copy to clipboard
+
 This is perfect for quickly providing context to an AI.
+
 ```bash
 # Find all Python files, respect .gitignore, and copy the result
 recap --git --include-content '\.py$' --clipboard
 ```
 
 #### Advanced: Strip license headers from JS files and upload to Gist
+
 A powerful one-liner to package and share code.
 
 ```bash
@@ -113,10 +124,12 @@ recap -I '\.js$' -S '\.js$' '^\s*/\*\*.*?\*/\s*' --paste
 ```
 
 #### Compact: Minify JSON and strip code comments
+
 ```bash
 # Minify JSON and compact common source files, respecting .gitignore
 recap --git --compact -I '\.(c|h|cpp|hpp|js|ts|go|json)$'
 ```
+
 #### Maintenance: Clean up old outputs
 
 ```bash
@@ -132,6 +145,7 @@ recap --clear
 - **Alternative**: `bash test/run-integration-tests.sh` — Run the test runner directly.
 
 Notes:
+
 - **Build step**: The `test` target will build the `recap` binary if it's missing; ensure the development headers for `pcre2`, `libcurl`, and `jansson` are installed.
 - **Environment**: The test runner copies `test/` into a temporary workspace and executes the repository `recap` binary. Set the `RECAP_BIN` environment variable to override the binary path if needed.
 
@@ -159,6 +173,8 @@ bash test/run-benchmarks.sh --runs 20 --show-runs
 
 - Gist uploads: private Gists via `--paste` use `GITHUB_API_KEY` by default; you can also pass a token directly: `--paste <KEY>`.
 - File size caps: individual file content blocks are limited to 10 MB; files larger than this are not inlined in the output. Gist uploads also enforce a 10 MB limit.
+- Output format: when only listing paths (e.g., using `-i` without `-I`), results are one path per line with no separators; when showing file contents via `--include-content`, `---` lines separate content blocks and mark the boundary before any following path-only listings.
+
 ## Contributing
 
 Contributions are welcome and greatly appreciated! Whether it's reporting a bug, proposing a new feature, or submitting a code change, your help is valuable.
@@ -167,8 +183,8 @@ Contributions are welcome and greatly appreciated! Whether it's reporting a bug,
 
 The best way to report a bug or request a new feature is to [open an issue](https://github.com/trethore/RECAP/issues) on GitHub.
 
-*   **For Bug Reports**: Please include your operating system, the command you ran, the output you received, and what you expected to happen.
-*   **For Feature Requests**: Please provide a clear description of the feature you'd like to see and why it would be useful.
+- **For Bug Reports**: Please include your operating system, the command you ran, the output you received, and what you expected to happen.
+- **For Feature Requests**: Please provide a clear description of the feature you'd like to see and why it would be useful.
 
 ### Submitting Changes (Pull Requests)
 
