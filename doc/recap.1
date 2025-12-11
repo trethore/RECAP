@@ -6,6 +6,8 @@ recap \- capture the structure and content of a workspace and consolidate it int
 [\fIOPTION\fR]... [\fIPATH\fR]...
 .SH DESCRIPTION
 A command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code. It uses extended regular expressions for powerful filtering of paths and content.
+.PP
+When only listing paths (for example, using \fB-i\fR without \fB-I\fR), output is one path per line with no separators. When showing file content via \fB-I\fR, a line containing \fB---\fR is printed between each content block and before any subsequent path-only listings.
 .SH OPTIONS
 All filters use extended REGEX. Mandatory arguments to long options are mandatory for short options too.
 .TP

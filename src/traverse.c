@@ -155,21 +155,36 @@ static void write_file_content_block(const char* full_path, const char* rel_path
 }
 
 static void print_output(recap_context* ctx) {
+    int include_content_mode = (ctx->content_include_filters.count > 0);
+    int content_blocks = 0;
+    int last_output_was_content = 0;
+
     for (size_t i = 0; i < ctx->matched_files.count; i++) {
         const path_entry* entry = &ctx->matched_files.items[i];
         const char* full_path = entry->full_path;
         const char* rel_path = entry->rel_path;
+        int show_content = should_show_content(rel_path, full_path, ctx);
 
-        if (i > 0) {
-            fprintf(ctx->output_stream, "---\n");
+        if (include_content_mode) {
+            if (show_content) {
+                if (content_blocks > 0) {
+                    fprintf(ctx->output_stream, "---\n");
+                }
+                write_file_content_block(full_path, rel_path, ctx);
+                content_blocks++;
+                last_output_was_content = 1;
+            }
+            else {
+                if (last_output_was_content) {
+                    fprintf(ctx->output_stream, "---\n");
+                }
+                fprintf(ctx->output_stream, "%s\n", rel_path);
+                last_output_was_content = 0;
+            }
+            continue;
         }
 
-        if (should_show_content(rel_path, full_path, ctx)) {
-            write_file_content_block(full_path, rel_path, ctx);
-        }
-        else {
-            fprintf(ctx->output_stream, "%s\n", rel_path);
-        }
+        fprintf(ctx->output_stream, "%s\n", rel_path);
     }
 }
 
