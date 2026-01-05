@@ -85,6 +85,11 @@ typedef struct {
     int copy_to_clipboard;
     int compact_output;
 
+    // Token optimization
+    char* separator;      // --separator [str], default "---", "" = disabled
+    int normalize_indent; // --normalize-indent flag
+    int truncate_tokens;  // --truncate N, default 0 = disabled
+
 } recap_context;
 
 void parse_arguments(int argc, char* argv[], recap_context* ctx);

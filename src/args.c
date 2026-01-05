@@ -227,9 +227,12 @@ void print_help(const char* version) {
     printf("  -I, --include-content <R>          Show content for files matching REGEX <R>.\n");
     printf("  -E, --exclude-content <R>          Exclude content for files matching REGEX <R>.\n");
     printf("  -g, --git [FILE]                   Use .gitignore patterns for exclusions (searches upwards from cwd).\n");
-    printf("  -s, --strip <REGEX>                In content blocks, skip all content that matches REGEX.\n");
-    printf("  -S, --strip-scope <P_RE> <S_RE>    Apply strip regex <S_RE> to files matching path regex <P_RE>.\n");
-    printf("      --compact                      Remove comments and redundant whitespace from content.\n\n");
+    printf("      --strip <REGEX>                In content blocks, skip all content that matches REGEX.\n");
+    printf("      --strip-scope <P_RE> <S_RE>    Apply strip regex <S_RE> to files matching path regex <P_RE>.\n");
+    printf("      --compact                      Remove comments and redundant whitespace from content.\n");
+    printf("      --separator [STR]              Set custom separator (default: '---'). No argument disables separator.\n");
+    printf("      --normalize-indent             Convert tabs to 2 spaces for consistent indentation.\n");
+    printf("      --truncate [N]                 Truncate files exceeding N tokens (default: 10000). 0 disables.\n\n");
     printf("Output and Upload:\n");
     printf("  -o, --output <FILE>                Specify the output file name (disables stdout).\n");
     printf("  -O, --output-dir <DIR>             Specify the output directory (disables stdout).\n");
@@ -242,7 +245,7 @@ void print_help(const char* version) {
     printf("  recap -e '^(obj|test)/'\n");
     printf("    Process the current directory, excluding all paths within 'obj/' and 'test/'.\n\n");
 
-    printf("  recap -I '.*'-s '^\\/\\*\\*(.|\\s)*\\*\\/\\s* \n");
+    printf("  recap -I '.*' --strip '^\\/\\*\\*(.|\\s)*\\*\\/\\s*'\n");
     printf("    Strip a JSDoc-style comment header from all files before printing their content.\n\n");
 
     printf("  recap -g --paste\n");
@@ -261,18 +264,21 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         {"exclude", required_argument, 0, 'e'},
         {"include-content", required_argument, 0, 'I'},
         {"exclude-content", required_argument, 0, 'E'},
-        {"strip", required_argument, 0, 's'},
-        {"strip-scope", required_argument, 0, 'S'},
+        {"strip", required_argument, 0, 260},
+        {"strip-scope", required_argument, 0, 261},
         {"git", optional_argument, 0, 'g'},
         {"paste", optional_argument, 0, 'p'},
         {"output", required_argument, 0, 'o'},
         {"output-dir", required_argument, 0, 'O'},
         {"clipboard", no_argument, 0, 'c'},
         {"compact", no_argument, 0, 256},
+        {"separator", optional_argument, 0, 257},
+        {"normalize-indent", no_argument, 0, 258},
+        {"truncate", optional_argument, 0, 259},
         {0, 0, 0, 0}};
 
     int opt;
-    while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:s:S:g::p::o:O:", long_options, NULL)) != -1) {
+    while ((opt = getopt_long(argc, argv, "hvcC::i:e:I:E:g::p::o:O:", long_options, NULL)) != -1) {
         switch (opt) {
         case 'h':
             print_help(ctx->version);
@@ -296,7 +302,7 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
         case 'E':
             add_regex(&ctx->content_exclude_filters, optarg);
             break;
-        case 's':
+        case 260: // --strip
             if (ctx->strip_regex) {
                 pcre2_code_free(ctx->strip_regex);
                 ctx->strip_regex = NULL;
@@ -314,7 +320,7 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
                 }
             }
             break;
-        case 'S':
+        case 261: // --strip-scope
             if (optind >= argc) {
                 fprintf(stderr, "Error: --strip-scope requires two arguments\n");
                 exit(1);
@@ -340,6 +346,31 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
             break;
         case 256:
             ctx->compact_output = 1;
+            break;
+        case 257: // --separator
+            if (optarg) {
+                ctx->separator = optarg;
+            }
+            else if (optind < argc && argv[optind] != NULL && argv[optind][0] != '-') {
+                ctx->separator = argv[optind++];
+            }
+            else {
+                ctx->separator = ""; // Empty string = no separator
+            }
+            break;
+        case 258: // --normalize-indent
+            ctx->normalize_indent = 1;
+            break;
+        case 259: // --truncate
+            if (optarg) {
+                ctx->truncate_tokens = atoi(optarg);
+            }
+            else if (optind < argc && argv[optind] != NULL && argv[optind][0] != '-') {
+                ctx->truncate_tokens = atoi(argv[optind++]);
+            }
+            else {
+                ctx->truncate_tokens = 10000; // Default 10000 tokens
+            }
             break;
         case '?': {
             const char* problem = NULL;

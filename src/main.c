@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-const char* RECAP_VERSION = "2.0.3";
+const char* RECAP_VERSION = "2.1.0";
 
 static void pcre2_code_ptr_cleanup(void* data) {
     pcre2_code** code = data;

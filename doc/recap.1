@@ -1,4 +1,4 @@
-.TH RECAP 1 "December 2025" "recap 2.0.3" "User Commands"
+.TH RECAP 1 "January 2026" "recap 2.1.0" "User Commands"
 .SH NAME
 recap \- capture the structure and content of a workspace and consolidate it into a single text output
 .SH SYNOPSIS
@@ -6,6 +6,13 @@ recap \- capture the structure and content of a workspace and consolidate it int
 [\fIOPTION\fR]... [\fIPATH\fR]...
 .SH DESCRIPTION
 A command-line tool designed to capture the structure and content of a workspace and consolidate it into a single text output. This output can be redirected to a file or piped directly, making it ideal for providing context to AI models that need to understand the project's layout and relevant code. It uses extended regular expressions for powerful filtering of paths and content.
+.SH OUTPUT FORMAT
+Each file entry is displayed with metadata in a tab-separated format:
+.RS 4
+.B path<TAB>lines<TAB>size
+.RE
+.PP
+For content files, lines shows the line count. For non-content files, it shows '-'. Size is human-readable (e.g., 4.2KB).
 .SH OPTIONS
 All filters use extended REGEX. Mandatory arguments to long options are mandatory for short options too.
 .TP
@@ -42,6 +49,18 @@ Use .gitignore patterns for exclusions. Searches upwards from the current direct
 or uses the optional
 .I FILE
 argument.
+.TP
+.B \-\-compact
+Remove comments and redundant whitespace from content.
+.TP
+.B \-\-separator[=\fISTR]
+Set a custom separator between files. Without an argument, disables the separator entirely. Default is '---'.
+.TP
+.B \-\-normalize-indent
+Convert all tabs to 2 spaces for consistent indentation, reducing token count for LLMs.
+.TP
+.B \-\-truncate[=\fIN]
+Truncate files exceeding approximately N tokens (1 token ≈ 4 characters). Without an argument, defaults to 10000 tokens. Use 0 to disable. Truncated files end with '...'.
 .TP
 .B \-p, \-\-paste[=\fIKEY]
 Upload output as a private GitHub Gist. If no API key is specified, it reads from the

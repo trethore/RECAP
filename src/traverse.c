@@ -74,19 +74,78 @@ static int should_show_content(const char* rel_path, const char* full_path, reca
     return 0;
 }
 
+static void format_size(off_t size, char* buf, size_t buf_size) {
+    if (size >= 1024 * 1024) {
+        snprintf(buf, buf_size, "%.1fMB", size / (1024.0 * 1024.0));
+    }
+    else if (size >= 1024) {
+        snprintf(buf, buf_size, "%.1fKB", size / 1024.0);
+    }
+    else {
+        snprintf(buf, buf_size, "%ldB", (long)size);
+    }
+}
+
+static int count_lines(const char* content) {
+    int count = 0;
+    for (const char* p = content; *p; p++) {
+        if (*p == '\n') count++;
+    }
+    return count;
+}
+
+static void write_line_normalized(const char* line, size_t len, FILE* output) {
+    // Convert leading tabs to 2 spaces each
+    const char* p = line;
+    size_t remaining = len;
+    while (remaining > 0 && (*p == '\t' || *p == ' ')) {
+        if (*p == '\t') {
+            fputs("  ", output);
+        }
+        else {
+            fputc(' ', output);
+        }
+        p++;
+        remaining--;
+    }
+    // Output rest of line
+    if (remaining > 0) {
+        fwrite(p, 1, remaining, output);
+    }
+    fputc('\n', output);
+}
+
+#define CHARS_PER_TOKEN 4
+
 static void write_file_content_block(const char* full_path, const char* rel_path, recap_context* ctx) {
-    fprintf(ctx->output_stream, "%s:\n", rel_path);
     char* content_buffer = NULL;
     size_t file_size = 0;
     int rf = read_file_into_buffer(full_path, MAX_FILE_CONTENT_SIZE, &content_buffer, &file_size);
+
+    // Get file stats for metadata
+    struct stat st;
+    int line_count = 0;
+    char size_str[32] = "0B";
+
+    if (stat(full_path, &st) == 0) {
+        format_size(st.st_size, size_str, sizeof(size_str));
+    }
+
     if (rf == -2) {
+        fprintf(ctx->output_stream, "%s\t?\t%s\n", rel_path, size_str);
         fprintf(ctx->output_stream, "[File content too large to process (>%dMB)]\n", MAX_FILE_CONTENT_SIZE / (1024 * 1024));
         return;
     }
     if (rf != 0) {
+        fprintf(ctx->output_stream, "%s\t?\t%s\n", rel_path, size_str);
         fprintf(ctx->output_stream, "[Error reading file content]\n");
         return;
     }
+
+    line_count = count_lines(content_buffer);
+
+    // Print header: path<TAB>lines<TAB>size
+    fprintf(ctx->output_stream, "%s\t%d\t%s\n", rel_path, line_count, size_str);
 
     const char* content_after_strip = content_buffer;
     pcre2_code* strip_regex_to_use = NULL;
@@ -124,20 +183,37 @@ static void write_file_content_block(const char* full_path, const char* rel_path
 
     const char* p = compacted_content ? compacted_content : content_after_strip;
     int previous_line_was_blank = 0;
+    size_t chars_written = 0;
+    size_t max_chars = (ctx->truncate_tokens > 0) ? (size_t)ctx->truncate_tokens * CHARS_PER_TOKEN : 0;
+    int truncated = 0;
+
     while (*p) {
         const char* end_of_line = strchr(p, '\n');
         size_t line_len = end_of_line ? (size_t)(end_of_line - p) : strlen(p);
         if (line_len > 0 && p[line_len - 1] == '\r') line_len--;
 
+        // Check if we would exceed truncation limit
+        if (max_chars > 0 && chars_written + line_len > max_chars) {
+            truncated = 1;
+            break;
+        }
+
         if (line_len == 0) {
             if (!previous_line_was_blank) {
                 fputc('\n', ctx->output_stream);
+                chars_written++;
                 previous_line_was_blank = 1;
             }
         }
         else {
             previous_line_was_blank = 0;
-            fprintf(ctx->output_stream, "%.*s\n", (int)line_len, p);
+            if (ctx->normalize_indent) {
+                write_line_normalized(p, line_len, ctx->output_stream);
+            }
+            else {
+                fprintf(ctx->output_stream, "%.*s\n", (int)line_len, p);
+            }
+            chars_written += line_len + 1;
         }
 
         if (end_of_line) {
@@ -148,6 +224,10 @@ static void write_file_content_block(const char* full_path, const char* rel_path
         }
     }
 
+    if (truncated) {
+        fprintf(ctx->output_stream, "...\n");
+    }
+
     if (compacted_content) {
         free(compacted_content);
     }
@@ -155,20 +235,30 @@ static void write_file_content_block(const char* full_path, const char* rel_path
 }
 
 static void print_output(recap_context* ctx) {
+    // Determine separator: NULL = default "---", empty = none, other = custom
+    const char* sep = ctx->separator ? ctx->separator : "---";
+    int use_separator = (sep[0] != '\0');
+
     for (size_t i = 0; i < ctx->matched_files.count; i++) {
         const path_entry* entry = &ctx->matched_files.items[i];
         const char* full_path = entry->full_path;
         const char* rel_path = entry->rel_path;
 
-        if (i > 0) {
-            fprintf(ctx->output_stream, "---\n");
+        if (i > 0 && use_separator) {
+            fprintf(ctx->output_stream, "%s\n", sep);
         }
 
         if (should_show_content(rel_path, full_path, ctx)) {
             write_file_content_block(full_path, rel_path, ctx);
         }
         else {
-            fprintf(ctx->output_stream, "%s\n", rel_path);
+            // For non-content files, still show metadata
+            struct stat st;
+            char size_str[32] = "?";
+            if (stat(full_path, &st) == 0) {
+                format_size(st.st_size, size_str, sizeof(size_str));
+            }
+            fprintf(ctx->output_stream, "%s\t-\t%s\n", rel_path, size_str);
         }
     }
 }

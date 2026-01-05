@@ -126,26 +126,27 @@ assert_out_not_contains "test/folder1/main.js"
 TEST_NAME="include-content"
 run_cmd "$TMPROOT" -I '\.c$' test
 assert_rc 0
-assert_out_contains "test/folder3/test.c:"
+assert_out_contains "test/folder3/test.c	"
 assert_out_contains "This is a test"
 
 TEST_NAME="exclude-content"
 run_cmd "$TMPROOT" -I '\.(js|ts)$' -E '\.js$' test
 assert_rc 0
-assert_out_contains "test/folder2/index.ts:"
+assert_out_contains "test/folder2/index.ts	"
 assert_out_contains "toto"
 assert_out_contains "test/folder1/main.js"
-TEST_NAME="exclude-content-check-mainjs-no-colon"
-assert_path_not_shown_with_colon "test/folder1/main.js"
+TEST_NAME="exclude-content-check-mainjs-no-content"
+# For non-content files, line count shows as "-" (dash)
+assert_out_contains "test/folder1/main.js	-	"
 
 TEST_NAME="strip-global"
 # use (?s) to enable DOTALL so the dot matches newlines
-run_cmd "$TMPROOT" -I '\.js$' -s '(?s)^\s*/\*\*.*?\*/\s*' test
+run_cmd "$TMPROOT" -I '\.js$' --strip '(?s)^\s*/\*\*.*?\*/\s*' test
 assert_rc 0
 assert_out_not_contains "Super cool JavaScript file"
 
 TEST_NAME="strip-scope"
-run_cmd "$TMPROOT" -I '\.js$' -S '\.js$' '(?s)^\s*/\*\*.*?\*/\s*' test
+run_cmd "$TMPROOT" -I '\.js$' --strip-scope '\.js$' '(?s)^\s*/\*\*.*?\*/\s*' test
 assert_rc 0
 assert_out_not_contains "Super cool JavaScript file"
 
