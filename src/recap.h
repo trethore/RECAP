@@ -86,9 +86,9 @@ typedef struct {
     int compact_output;
 
     // Token optimization
-    char* separator;      // --separator [str], default "---", "" = disabled
-    int normalize_indent; // --normalize-indent flag
-    int truncate_tokens;  // --truncate N, default 0 = disabled
+    char* separator;
+    int normalize_indent;
+    int truncate_tokens;
 
 } recap_context;
 

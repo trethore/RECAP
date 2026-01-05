@@ -95,7 +95,6 @@ static int count_lines(const char* content) {
 }
 
 static void write_line_normalized(const char* line, size_t len, FILE* output) {
-    // Convert leading tabs to 2 spaces each
     const char* p = line;
     size_t remaining = len;
     while (remaining > 0 && (*p == '\t' || *p == ' ')) {
@@ -108,7 +107,6 @@ static void write_line_normalized(const char* line, size_t len, FILE* output) {
         p++;
         remaining--;
     }
-    // Output rest of line
     if (remaining > 0) {
         fwrite(p, 1, remaining, output);
     }
@@ -122,7 +120,6 @@ static void write_file_content_block(const char* full_path, const char* rel_path
     size_t file_size = 0;
     int rf = read_file_into_buffer(full_path, MAX_FILE_CONTENT_SIZE, &content_buffer, &file_size);
 
-    // Get file stats for metadata
     struct stat st;
     int line_count = 0;
     char size_str[32] = "0B";
@@ -144,7 +141,6 @@ static void write_file_content_block(const char* full_path, const char* rel_path
 
     line_count = count_lines(content_buffer);
 
-    // Print header: path<TAB>lines<TAB>size
     fprintf(ctx->output_stream, "%s\t%d\t%s\n", rel_path, line_count, size_str);
 
     const char* content_after_strip = content_buffer;
@@ -192,7 +188,6 @@ static void write_file_content_block(const char* full_path, const char* rel_path
         size_t line_len = end_of_line ? (size_t)(end_of_line - p) : strlen(p);
         if (line_len > 0 && p[line_len - 1] == '\r') line_len--;
 
-        // Check if we would exceed truncation limit
         if (max_chars > 0 && chars_written + line_len > max_chars) {
             truncated = 1;
             break;
@@ -235,7 +230,6 @@ static void write_file_content_block(const char* full_path, const char* rel_path
 }
 
 static void print_output(recap_context* ctx) {
-    // Determine separator: NULL = default "---", empty = none, other = custom
     const char* sep = ctx->separator ? ctx->separator : "---";
     int use_separator = (sep[0] != '\0');
 
@@ -252,7 +246,6 @@ static void print_output(recap_context* ctx) {
             write_file_content_block(full_path, rel_path, ctx);
         }
         else {
-            // For non-content files, still show metadata
             struct stat st;
             char size_str[32] = "?";
             if (stat(full_path, &st) == 0) {

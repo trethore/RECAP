@@ -19,7 +19,6 @@ static int add_regex_internal(pcre2_code** re, const char* pattern, uint32_t opt
         fprintf(stderr, "Error: Could not compile regex '%s': %s at offset %d\n", pattern, (char*)err_buf, (int)error_offset);
         return -1;
     }
-    // Enable JIT compilation
     pcre2_jit_compile(*re, PCRE2_JIT_COMPLETE);
     return 0;
 }
@@ -355,7 +354,7 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
                 ctx->separator = argv[optind++];
             }
             else {
-                ctx->separator = ""; // Empty string = no separator
+                ctx->separator = "";
             }
             break;
         case 258: // --normalize-indent
@@ -369,7 +368,7 @@ void parse_arguments(int argc, char* argv[], recap_context* ctx) {
                 ctx->truncate_tokens = atoi(argv[optind++]);
             }
             else {
-                ctx->truncate_tokens = 10000; // Default 10000 tokens
+                ctx->truncate_tokens = 10000;
             }
             break;
         case '?': {
